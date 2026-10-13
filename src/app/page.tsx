@@ -11,12 +11,12 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ type: "error" | "success"; text: string } | null>(null);
 
-  const supabase = createClient();
-
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setMessage(null);
+
+    const supabase = createClient();
 
     if (isSignUp) {
       const { error } = await supabase.auth.signUp({ email, password });
