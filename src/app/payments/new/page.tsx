@@ -6,12 +6,14 @@ import { ArrowLeft, CreditCard } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { format } from "date-fns";
+import { getSavedCurrency } from "@/lib/currency";
 
 export default function NewPaymentPage() {
   const router = useRouter();
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [currencySymbol, setCurrencySymbol] = useState("$");
   const [form, setForm] = useState({
     invoice_id: "",
     amount: "",
@@ -21,6 +23,9 @@ export default function NewPaymentPage() {
   });
 
   useEffect(() => {
+    const cur = getSavedCurrency();
+    setCurrencySymbol(cur.symbol);
+
     const load = async () => {
       const supabase = createClient();
       const { data } = await supabase
@@ -110,22 +115,22 @@ export default function NewPaymentPage() {
                 <option value="">Select an invoice...</option>
                 {invoices.map((i) => (
                   <option key={i.id} value={i.id}>
-                    {(i.customer as any)?.name} — {i.invoice_number} (${Number(i.amount).toFixed(2)})
+                    {(i.customer as any)?.name} — {i.invoice_number} ({currencySymbol}{Number(i.amount).toFixed(2)})
                   </option>
                 ))}
               </select>
             )}
             {selectedInvoice && (
               <p className="text-xs text-gray-500 mt-1.5">
-                Invoice total: <span className="font-semibold text-gray-700">${Number(selectedInvoice.amount).toFixed(2)}</span>
+                Invoice total: <span className="font-semibold text-gray-700">{currencySymbol}{Number(selectedInvoice.amount).toFixed(2)}</span>
               </p>
             )}
           </div>
 
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">Amount Paid *</label>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">Amount Paid ({currencySymbol}) *</label>
             <div className="relative">
-              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-medium">$</span>
+              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-medium">{currencySymbol}</span>
               <input
                 type="number"
                 min="0.01"

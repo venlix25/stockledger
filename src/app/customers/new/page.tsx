@@ -55,10 +55,10 @@ export default function NewCustomerPage() {
         )}
         <form onSubmit={handleSubmit} className="space-y-5">
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">Full Name *</label>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">Full Name / Business Name *</label>
             <input
               type="text"
-              placeholder="e.g. Ko Myo, Shwe Pyi Thar Store"
+              placeholder="e.g. Apex Global Traders, Sarah Jenkins"
               value={form.name}
               onChange={(e) => setForm({ ...form, name: e.target.value })}
               className="input-field"
@@ -69,7 +69,7 @@ export default function NewCustomerPage() {
             <label className="block text-sm font-semibold text-gray-700 mb-2">Phone Number</label>
             <input
               type="tel"
-              placeholder="e.g. 09123456789"
+              placeholder="e.g. +1 555-019-2834"
               value={form.phone}
               onChange={(e) => setForm({ ...form, phone: e.target.value })}
               className="input-field"
@@ -79,7 +79,7 @@ export default function NewCustomerPage() {
             <label className="block text-sm font-semibold text-gray-700 mb-2">Email (optional)</label>
             <input
               type="email"
-              placeholder="customer@email.com"
+              placeholder="e.g. contact@apexglobal.com"
               value={form.email}
               onChange={(e) => setForm({ ...form, email: e.target.value })}
               className="input-field"
@@ -88,7 +88,7 @@ export default function NewCustomerPage() {
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-2">Address (optional)</label>
             <textarea
-              placeholder="Shop address or delivery address..."
+              placeholder="e.g. 742 Evergreen Terrace, Suite 100, Springfield"
               value={form.address}
               onChange={(e) => setForm({ ...form, address: e.target.value })}
               rows={2}

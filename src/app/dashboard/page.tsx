@@ -15,7 +15,7 @@ import {
   TrendingUp,
   ArrowRight,
   AlertCircle,
-  Sparkles,
+  Inbox,
 } from "lucide-react";
 import Link from "next/link";
 import type { Invoice, Payment } from "@/types";
@@ -31,35 +31,12 @@ import {
 } from "recharts";
 import { getSavedCurrency, formatMoney } from "@/lib/currency";
 
-// Sample showcase data directly from design blueprint (shown if DB has no invoices yet)
-const DEMO_INVOICES: any[] = [
-  { id: "demo-1", invoice_number: "INV-10021", customer: { name: "Min Naing Trade" }, amount: 450, status: "pending", due_date: format(addDays(new Date(), 2), "yyyy-MM-dd"), created_at: new Date().toISOString() },
-  { id: "demo-2", invoice_number: "INV-10020", customer: { name: "Shwe Pyi Thar" }, amount: 320, status: "paid", due_date: format(subDays(new Date(), 3), "yyyy-MM-dd"), created_at: new Date().toISOString() },
-  { id: "demo-3", invoice_number: "INV-10019", customer: { name: "Kyaw Win Wholesale" }, amount: 780, status: "pending", due_date: format(addDays(new Date(), 4), "yyyy-MM-dd"), created_at: new Date().toISOString() },
-  { id: "demo-4", invoice_number: "INV-10018", customer: { name: "Moe Moe Store" }, amount: 210, status: "paid", due_date: format(subDays(new Date(), 5), "yyyy-MM-dd"), created_at: new Date().toISOString() },
-  { id: "demo-5", invoice_number: "INV-10017", customer: { name: "Aung Myint Co." }, amount: 640, status: "overdue", due_date: format(subDays(new Date(), 2), "yyyy-MM-dd"), created_at: new Date().toISOString() },
-];
-
-const DEMO_PAYMENTS: any[] = [
-  { id: "pay-1", customer: { name: "Shwe Pyi Thar" }, amount: 320, payment_date: format(subDays(new Date(), 2), "yyyy-MM-dd"), method: "bank_transfer" },
-  { id: "pay-2", customer: { name: "Moe Moe Store" }, amount: 210, payment_date: format(subDays(new Date(), 4), "yyyy-MM-dd"), method: "cash" },
-  { id: "pay-3", customer: { name: "Aung Myint Co." }, amount: 400, payment_date: format(subDays(new Date(), 10), "yyyy-MM-dd"), method: "credit_card" },
-  { id: "pay-4", customer: { name: "Min Naing Trade" }, amount: 270, payment_date: format(subDays(new Date(), 15), "yyyy-MM-dd"), method: "online_payment" },
-];
-
-function subDays(date: Date, days: number): Date {
-  const d = new Date(date);
-  d.setDate(d.getDate() - days);
-  return d;
-}
-
 export default function DashboardPage() {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [payments, setPayments] = useState<Payment[]>([]);
   const [userName, setUserName] = useState<string>("Merchant");
   const [currencySymbol, setCurrencySymbol] = useState<string>("$");
   const [loading, setLoading] = useState(true);
-  const [isDemoMode, setIsDemoMode] = useState(false);
 
   useEffect(() => {
     const cur = getSavedCurrency();
@@ -102,16 +79,8 @@ export default function DashboardPage() {
         }
       }
 
-      if (inv && inv.length > 0) {
-        setInvoices(inv);
-        setPayments(pay || []);
-        setIsDemoMode(false);
-      } else {
-        // Fallback to demo blueprint data so user immediately sees the rich UI/UX
-        setInvoices(DEMO_INVOICES);
-        setPayments(DEMO_PAYMENTS);
-        setIsDemoMode(true);
-      }
+      setInvoices(inv || []);
+      setPayments(pay || []);
       setLoading(false);
     };
     load();
@@ -128,58 +97,55 @@ export default function DashboardPage() {
   };
 
   const now = new Date();
+  const currentMonthStart = startOfMonth(now);
+  const currentMonthEnd = endOfMonth(now);
+
   const totalOutstanding = invoices
     .filter((i) => i.status !== "paid")
     .reduce((sum, i) => sum + Number(i.amount), 0);
 
-  const paidThisMonth = invoices
-    .filter((i) => i.status === "paid")
-    .reduce((sum, i) => sum + Number(i.amount), 0) + (isDemoMode ? 670 : 0);
+  const paidThisMonth = payments
+    .filter((p) => {
+      const d = new Date(p.payment_date);
+      return d >= currentMonthStart && d <= currentMonthEnd;
+    })
+    .reduce((sum, p) => sum + Number(p.amount), 0);
 
-  const totalCount = isDemoMode ? 12 : invoices.length;
+  const totalCount = invoices.length;
   const pendingCount = invoices.filter((i) => i.status === "pending").length;
-  const overdueCount = invoices.filter((i) => i.status === "overdue").length;
+  const overdueCount = invoices.filter((i) => {
+    if (i.status === "paid") return false;
+    const due = new Date(i.due_date);
+    return isBefore(due, now);
+  }).length;
+  const paidCount = invoices.filter((i) => i.status === "paid").length;
 
-  // Invoices due soon
+  // Invoices due soon (within 7 days and unpaid)
   const dueSoonInvoices = invoices.filter((i) => {
     if (i.status === "paid") return false;
     const dueDate = new Date(i.due_date);
     return isBefore(dueDate, addDays(now, 7));
   });
 
-  // Dynamic 6-month chart data
-  const dynamicChartData = Array.from({ length: 6 }, (_, idx) => {
-    const date = subMonths(new Date(), 5 - idx);
+  // Dynamic 6-month chart data from real database
+  const dynamicChartData = [5, 4, 3, 2, 1, 0].map((monthsAgo) => {
+    const date = subMonths(now, monthsAgo);
     const start = startOfMonth(date);
     const end = endOfMonth(date);
 
-    let paidSum = payments
+    const paidSum = payments
       .filter((p) => {
         const d = new Date(p.payment_date);
         return d >= start && d <= end;
       })
       .reduce((s, p) => s + Number(p.amount), 0);
 
-    let pendingSum = invoices
+    const pendingSum = invoices
       .filter((inv) => {
         const d = new Date(inv.created_at);
         return inv.status !== "paid" && d >= start && d <= end;
       })
       .reduce((s, inv) => s + Number(inv.amount), 0);
-
-    if (isDemoMode) {
-      // Realistic historical curve from design blueprint
-      const demoValues = [
-        { paid: 800, pending: 400 },
-        { paid: 1200, pending: 600 },
-        { paid: 950, pending: 300 },
-        { paid: 1400, pending: 800 },
-        { paid: 1100, pending: 520 },
-        { paid: 1200, pending: 480 },
-      ];
-      paidSum = demoValues[idx].paid;
-      pendingSum = demoValues[idx].pending;
-    }
 
     return {
       month: format(date, "MMM"),
@@ -190,29 +156,6 @@ export default function DashboardPage() {
 
   return (
     <div className="p-8 max-w-7xl mx-auto">
-      {/* Demo Banner */}
-      {isDemoMode && (
-        <div className="mb-6 p-4 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl text-white shadow-md flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center flex-shrink-0">
-              <Sparkles className="w-5 h-5 text-white" />
-            </div>
-            <div>
-              <p className="text-sm font-bold">Interactive Demo Preview</p>
-              <p className="text-xs text-blue-100 mt-0.5">
-                Showing sample wholesale activity from the design blueprint. Click below to add your own real invoices!
-              </p>
-            </div>
-          </div>
-          <Link
-            href="/invoices/new"
-            className="px-4 py-2 bg-white text-blue-700 hover:bg-blue-50 rounded-xl text-xs font-bold transition-all whitespace-nowrap shadow-sm"
-          >
-            + Create First Invoice
-          </Link>
-        </div>
-      )}
-
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
         <div>
@@ -220,7 +163,7 @@ export default function DashboardPage() {
             {getGreeting()}, {userName}! 👋
           </h2>
           <p className="text-gray-500 text-sm mt-1">
-            Here's what's happening with your business today.
+            Here&apos;s what&apos;s happening with your business today.
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -239,7 +182,7 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Due Soon Alert (From Concept 3 / Reminders) */}
+      {/* Due Soon Alert */}
       {dueSoonInvoices.length > 0 && (
         <div className="mb-8 p-4 bg-amber-50 border border-amber-200 rounded-2xl flex items-start justify-between gap-4">
           <div className="flex items-start gap-3">
@@ -275,7 +218,7 @@ export default function DashboardPage() {
         <StatCard
           title="Paid This Month"
           value={formatMoney(paidThisMonth, currencySymbol)}
-          subtitle={`${isDemoMode ? 7 : invoices.filter((i) => i.status === "paid").length} payments received`}
+          subtitle={`${payments.length} payment${payments.length === 1 ? "" : "s"} recorded`}
           icon={CheckCircle}
           color="green"
           trend="This month"
@@ -295,43 +238,64 @@ export default function DashboardPage() {
         <div className="lg:col-span-2 card">
           <div className="flex items-center justify-between mb-5">
             <h3 className="font-bold text-gray-900">Recent Invoices</h3>
-            <Link
-              href="/invoices"
-              className="text-sm text-blue-600 hover:text-blue-700 flex items-center gap-1 font-medium"
-            >
-              View all <ArrowRight className="w-3.5 h-3.5" />
-            </Link>
+            {invoices.length > 0 && (
+              <Link
+                href="/invoices"
+                className="text-sm text-blue-600 hover:text-blue-700 flex items-center gap-1 font-medium"
+              >
+                View all <ArrowRight className="w-3.5 h-3.5" />
+              </Link>
+            )}
           </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-left text-xs text-gray-400 border-b border-gray-100">
-                  <th className="pb-3 font-medium">Customer</th>
-                  <th className="pb-3 font-medium">Amount</th>
-                  <th className="pb-3 font-medium">Status</th>
-                  <th className="pb-3 font-medium">Due Date</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-50">
-                {invoices.slice(0, 5).map((inv) => (
-                  <tr key={inv.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="py-3 font-medium text-gray-800">
-                      {(inv.customer as any)?.name || "—"}
-                    </td>
-                    <td className="py-3 font-semibold text-gray-900">
-                      {formatMoney(inv.amount, currencySymbol)}
-                    </td>
-                    <td className="py-3">
-                      <StatusBadge status={inv.status} />
-                    </td>
-                    <td className="py-3 text-gray-500">
-                      {format(new Date(inv.due_date), "MMM d")}
-                    </td>
+
+          {invoices.length === 0 ? (
+            <div className="text-center py-12 px-4 border border-dashed border-gray-200 rounded-2xl">
+              <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-3">
+                <FileText className="w-6 h-6" />
+              </div>
+              <p className="text-base font-semibold text-gray-800">No invoices yet</p>
+              <p className="text-xs text-gray-500 mt-1 max-w-sm mx-auto">
+                Create your first invoice to start tracking customer balances and receivables.
+              </p>
+              <Link
+                href="/invoices/new"
+                className="inline-flex items-center gap-1.5 mt-4 btn-primary text-xs py-2 px-4"
+              >
+                <Plus className="w-3.5 h-3.5" /> Create First Invoice
+              </Link>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-left text-xs text-gray-400 border-b border-gray-100">
+                    <th className="pb-3 font-medium">Customer</th>
+                    <th className="pb-3 font-medium">Amount</th>
+                    <th className="pb-3 font-medium">Status</th>
+                    <th className="pb-3 font-medium">Due Date</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className="divide-y divide-gray-50">
+                  {invoices.slice(0, 5).map((inv) => (
+                    <tr key={inv.id} className="hover:bg-gray-50 transition-colors">
+                      <td className="py-3 font-medium text-gray-800">
+                        {(inv.customer as any)?.name || "—"}
+                      </td>
+                      <td className="py-3 font-semibold text-gray-900">
+                        {formatMoney(inv.amount, currencySymbol)}
+                      </td>
+                      <td className="py-3">
+                        <StatusBadge status={inv.status} />
+                      </td>
+                      <td className="py-3 text-gray-500">
+                        {format(new Date(inv.due_date), "MMM d")}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
 
         {/* Payment Status Breakdown */}
@@ -344,7 +308,7 @@ export default function DashboardPage() {
                 <span className="text-sm font-medium text-gray-700">Paid</span>
               </div>
               <span className="text-sm font-bold text-green-700">
-                {isDemoMode ? 7 : invoices.filter((i) => i.status === "paid").length}
+                {paidCount}
               </span>
             </div>
             <div className="flex items-center justify-between p-3.5 bg-amber-50 rounded-xl">
@@ -353,7 +317,7 @@ export default function DashboardPage() {
                 <span className="text-sm font-medium text-gray-700">Pending</span>
               </div>
               <span className="text-sm font-bold text-amber-700">
-                {isDemoMode ? 4 : pendingCount}
+                {pendingCount}
               </span>
             </div>
             <div className="flex items-center justify-between p-3.5 bg-red-50 rounded-xl">
@@ -362,7 +326,7 @@ export default function DashboardPage() {
                 <span className="text-sm font-medium text-gray-700">Overdue</span>
               </div>
               <span className="text-sm font-bold text-red-700">
-                {isDemoMode ? 1 : overdueCount}
+                {overdueCount}
               </span>
             </div>
           </div>
@@ -408,30 +372,45 @@ export default function DashboardPage() {
         <div className="card">
           <div className="flex items-center justify-between mb-4">
             <h3 className="font-bold text-gray-900">Recent Transactions</h3>
-            <Link href="/payments" className="text-xs text-blue-600 font-medium">
-              View all
-            </Link>
+            {payments.length > 0 && (
+              <Link href="/payments" className="text-xs text-blue-600 font-medium">
+                View all
+              </Link>
+            )}
           </div>
-          <div className="space-y-3">
-            {payments.slice(0, 4).map((pay) => (
-              <div key={pay.id} className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
-                  <CreditCard className="w-4 h-4 text-green-600" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-gray-800 truncate">
-                    {(pay.customer as any)?.name || "—"}
-                  </p>
-                  <p className="text-xs text-gray-400">
-                    {format(new Date(pay.payment_date), "MMM d")}
-                  </p>
-                </div>
-                <span className="text-sm font-bold text-green-600">
-                  +{formatMoney(pay.amount, currencySymbol)}
-                </span>
+
+          {payments.length === 0 ? (
+            <div className="text-center py-10 px-4 border border-dashed border-gray-200 rounded-2xl">
+              <div className="w-10 h-10 bg-green-50 text-green-600 rounded-xl flex items-center justify-center mx-auto mb-2">
+                <CreditCard className="w-5 h-5" />
               </div>
-            ))}
-          </div>
+              <p className="text-sm font-semibold text-gray-800">No payments yet</p>
+              <p className="text-xs text-gray-500 mt-1">
+                Recorded payments will automatically appear here.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {payments.slice(0, 4).map((pay) => (
+                <div key={pay.id} className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
+                    <CreditCard className="w-4 h-4 text-green-600" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-800 truncate">
+                      {(pay.customer as any)?.name || "—"}
+                    </p>
+                    <p className="text-xs text-gray-400">
+                      {format(new Date(pay.payment_date), "MMM d")}
+                    </p>
+                  </div>
+                  <span className="text-sm font-bold text-green-600">
+                    +{formatMoney(pay.amount, currencySymbol)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
