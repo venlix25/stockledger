@@ -1,6 +1,8 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { getUserPlan, PLAN_LIMITS } from "@/lib/plan";
+import UpgradeModal from "@/components/UpgradeModal";
 import { ArrowLeft, Users } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -10,10 +12,30 @@ export default function NewCustomerPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [form, setForm] = useState({ name: "", phone: "", email: "", address: "" });
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [customerCount, setCustomerCount] = useState(0);
+
+  useEffect(() => {
+    const fetchCount = async () => {
+      const supabase = createClient();
+      const { count } = await supabase
+        .from("customers")
+        .select("*", { count: "exact", head: true });
+      setCustomerCount(count || 0);
+    };
+    fetchCount();
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.name.trim()) { setError("Customer name is required."); return; }
+
+    const plan = getUserPlan();
+    if (plan === "free" && customerCount >= PLAN_LIMITS.free.maxCustomers) {
+      setShowUpgradeModal(true);
+      return;
+    }
+
     setLoading(true);
 
     const supabase = createClient();
@@ -103,6 +125,12 @@ export default function NewCustomerPage() {
           </div>
         </form>
       </div>
+
+      <UpgradeModal
+        isOpen={showUpgradeModal}
+        onClose={() => setShowUpgradeModal(false)}
+        reason="The Free Starter plan allows up to 5 customers. Upgrade to Pro for unlimited customers & invoices!"
+      />
     </div>
   );
 }

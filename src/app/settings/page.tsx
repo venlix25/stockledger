@@ -14,8 +14,11 @@ import {
   LogOut,
   Save,
   CheckCircle,
+  Zap,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { getUserPlan, setUserPlan, PLAN_LIMITS, type UserPlan } from "@/lib/plan";
+import UpgradeModal from "@/components/UpgradeModal";
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -23,8 +26,12 @@ export default function SettingsPage() {
   const [businessName, setBusinessName] = useState("");
   const [selectedCurrency, setSelectedCurrency] = useState("USD");
   const [savedMessage, setSavedMessage] = useState(false);
+  const [plan, setPlan] = useState<UserPlan>("free");
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
 
   useEffect(() => {
+    setPlan(getUserPlan());
+
     const loadUser = async () => {
       const supabase = createClient();
       const {
@@ -148,26 +155,61 @@ export default function SettingsPage() {
           </div>
         </div>
 
-        {/* Subscription / Plan from Business Plan */}
+        {/* Subscription / Plan Card */}
         <div className="card border-blue-100 bg-gradient-to-r from-blue-50/50 to-indigo-50/50">
           <div className="flex items-start justify-between">
             <div>
               <div className="flex items-center gap-2 mb-1">
-                <ShieldCheck className="w-5 h-5 text-blue-600" />
+                {plan === "pro" ? (
+                  <ShieldCheck className="w-5 h-5 text-green-600" />
+                ) : (
+                  <Zap className="w-5 h-5 text-amber-500 fill-amber-500" />
+                )}
                 <h3 className="text-base font-bold text-gray-900">
-                  Current Plan: Early Adopter (Free Trial)
+                  Current Plan: {plan === "pro" ? "Pro Unlimited ($9/mo)" : "Starter (Free Tier)"}
                 </h3>
               </div>
               <p className="text-sm text-gray-600">
-                You currently have full unlimited access to invoices, customer tracking, and reports.
+                {plan === "pro"
+                  ? "Full unlimited access to invoices, customers, due alerts, and all currencies."
+                  : "Free tier limited to 5 customers and 10 invoices."}
               </p>
             </div>
-            <span className="px-3 py-1 bg-green-100 text-green-700 font-semibold text-xs rounded-full">
-              Active
+            <span
+              className={`px-3 py-1 font-semibold text-xs rounded-full ${
+                plan === "pro"
+                  ? "bg-green-100 text-green-700"
+                  : "bg-amber-100 text-amber-800"
+              }`}
+            >
+              {plan === "pro" ? "Pro Active" : "Free Tier"}
             </span>
           </div>
-          <div className="mt-4 pt-4 border-t border-blue-100 text-xs text-gray-500">
-            Standard Plan: <strong>$10/month</strong> • Pro Plan: <strong>$20/month</strong>
+
+          <div className="mt-4 pt-4 border-t border-blue-100 flex items-center justify-between">
+            <div className="text-xs text-gray-500">
+              Pro Plan: <strong>$9/month</strong> or <strong>$49 Lifetime</strong>
+            </div>
+            {plan === "free" ? (
+              <button
+                type="button"
+                onClick={() => setShowUpgradeModal(true)}
+                className="py-1.5 px-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold text-xs rounded-xl shadow-sm hover:from-blue-700 hover:to-indigo-700 transition-all flex items-center gap-1"
+              >
+                <Zap className="w-3.5 h-3.5 fill-white" /> Upgrade to Pro
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => {
+                  setUserPlan("free");
+                  setPlan("free");
+                }}
+                className="text-xs text-gray-400 hover:text-gray-600 underline"
+              >
+                Switch to Free (Test Mode)
+              </button>
+            )}
           </div>
         </div>
 
@@ -185,6 +227,12 @@ export default function SettingsPage() {
           </button>
         </div>
       </form>
+
+      <UpgradeModal
+        isOpen={showUpgradeModal}
+        onClose={() => setShowUpgradeModal(false)}
+        reason="Upgrade to StockLedger Pro for unlimited invoicing, customers, and priority features."
+      />
     </div>
   );
 }

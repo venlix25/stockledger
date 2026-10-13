@@ -7,6 +7,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { format } from "date-fns";
 import { getSavedCurrency } from "@/lib/currency";
+import { getUserPlan, PLAN_LIMITS } from "@/lib/plan";
+import UpgradeModal from "@/components/UpgradeModal";
 
 export default function NewInvoicePage() {
   const router = useRouter();
@@ -14,6 +16,8 @@ export default function NewInvoicePage() {
   const [currency, setCurrency] = useState(getSavedCurrency());
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [invoiceCount, setInvoiceCount] = useState(0);
   const [form, setForm] = useState({
     customer_id: "",
     amount: "",
@@ -25,8 +29,15 @@ export default function NewInvoicePage() {
     setCurrency(getSavedCurrency());
     const load = async () => {
       const supabase = createClient();
-      const { data } = await supabase.from("customers").select("*").order("name");
-      setCustomers(data || []);
+      const [
+        { data: custData },
+        { count: invCount }
+      ] = await Promise.all([
+        supabase.from("customers").select("*").order("name"),
+        supabase.from("invoices").select("*", { count: "exact", head: true }),
+      ]);
+      setCustomers(custData || []);
+      setInvoiceCount(invCount || 0);
     };
     load();
   }, []);
@@ -35,6 +46,12 @@ export default function NewInvoicePage() {
     e.preventDefault();
     if (!form.customer_id) { setError("Please select a customer."); return; }
     if (!form.amount || isNaN(Number(form.amount))) { setError("Please enter a valid amount."); return; }
+
+    const plan = getUserPlan();
+    if (plan === "free" && invoiceCount >= PLAN_LIMITS.free.maxInvoices) {
+      setShowUpgradeModal(true);
+      return;
+    }
 
     setLoading(true);
     const supabase = createClient();
@@ -155,6 +172,12 @@ export default function NewInvoicePage() {
           </div>
         </form>
       </div>
+
+      <UpgradeModal
+        isOpen={showUpgradeModal}
+        onClose={() => setShowUpgradeModal(false)}
+        reason="The Free Starter plan allows up to 10 invoices. Upgrade to Pro for unlimited invoices, payments & records!"
+      />
     </div>
   );
 }

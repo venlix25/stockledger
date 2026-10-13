@@ -25,12 +25,25 @@ const navItems = [
   { href: "/settings", label: "Settings", icon: Settings },
 ];
 
+import { getUserPlan, type UserPlan } from "@/lib/plan";
+import UpgradeModal from "@/components/UpgradeModal";
+import { Zap, ShieldCheck } from "lucide-react";
+
 export default function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const [userName, setUserName] = useState<string>("Merchant");
+  const [plan, setPlan] = useState<UserPlan>("free");
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
 
   useEffect(() => {
+    setPlan(getUserPlan());
+
+    const handlePlanUpdate = () => {
+      setPlan(getUserPlan());
+    };
+    window.addEventListener("plan_updated", handlePlanUpdate);
+
     const fetchUser = async () => {
       const supabase = createClient();
       const {
@@ -57,7 +70,10 @@ export default function Sidebar() {
       if (savedBizName) setUserName(savedBizName);
     };
     window.addEventListener("profile_updated", handleProfileUpdate);
-    return () => window.removeEventListener("profile_updated", handleProfileUpdate);
+    return () => {
+      window.removeEventListener("profile_updated", handleProfileUpdate);
+      window.removeEventListener("plan_updated", handlePlanUpdate);
+    };
   }, []);
 
   const handleLogout = async () => {
@@ -114,15 +130,43 @@ export default function Sidebar() {
         })}
       </nav>
 
-      {/* Motivational Card (from Concept 3) */}
+      {/* Plan Status Card */}
       <div className="mx-3 mb-3 p-3.5 bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-100/60 rounded-2xl">
-        <div className="flex items-center gap-2 mb-1">
-          <Sparkles className="w-4 h-4 text-blue-600" />
-          <span className="text-xs font-semibold text-blue-900">Get Paid On Time</span>
+        <div className="flex items-center justify-between mb-1">
+          <div className="flex items-center gap-1.5">
+            {plan === "pro" ? (
+              <ShieldCheck className="w-4 h-4 text-green-600" />
+            ) : (
+              <Zap className="w-4 h-4 text-amber-500 fill-amber-500" />
+            )}
+            <span className="text-xs font-bold text-gray-900">
+              {plan === "pro" ? "Pro Unlimited" : "Free Plan"}
+            </span>
+          </div>
+          <span
+            className={clsx(
+              "text-[10px] font-bold px-1.5 py-0.5 rounded-full uppercase",
+              plan === "pro"
+                ? "bg-green-100 text-green-700"
+                : "bg-amber-100 text-amber-800"
+            )}
+          >
+            {plan === "pro" ? "Active" : "5 Cust. Max"}
+          </span>
         </div>
-        <p className="text-[11px] text-blue-700 leading-relaxed">
-          Your business grows when cash flow stays steady.
+        <p className="text-[11px] text-gray-500 mb-2.5">
+          {plan === "pro"
+            ? "Unlimited invoices, customers & global currencies."
+            : "Free tier capped at 5 customers & 10 invoices."}
         </p>
+        {plan === "free" && (
+          <button
+            onClick={() => setShowUpgradeModal(true)}
+            className="w-full py-1.5 px-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl text-xs font-bold shadow-sm transition-all flex items-center justify-center gap-1"
+          >
+            <Zap className="w-3.5 h-3.5 fill-white" /> Upgrade to Pro
+          </button>
+        )}
       </div>
 
       {/* Logout */}
@@ -135,6 +179,12 @@ export default function Sidebar() {
           Sign Out
         </button>
       </div>
+
+      <UpgradeModal
+        isOpen={showUpgradeModal}
+        onClose={() => setShowUpgradeModal(false)}
+        reason="Upgrade to StockLedger Pro for unlimited invoicing, customers, and priority features."
+      />
     </aside>
   );
 }
