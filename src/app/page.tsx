@@ -19,9 +19,17 @@ export default function LoginPage() {
     const supabase = createClient();
 
     if (isSignUp) {
-      const { error } = await supabase.auth.signUp({ email, password });
-      if (error) setMessage({ type: "error", text: error.message });
-      else setMessage({ type: "success", text: "Check your email to confirm your account!" });
+      const { data, error } = await supabase.auth.signUp({ email, password });
+      if (error) {
+        setMessage({ type: "error", text: error.message });
+      } else if (data?.session) {
+        window.location.href = "/dashboard";
+      } else {
+        setMessage({
+          type: "success",
+          text: "Account created! You can now log in, or check your spam/junk folder if confirmation is required.",
+        });
+      }
     } else {
       const { error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) setMessage({ type: "error", text: error.message });
