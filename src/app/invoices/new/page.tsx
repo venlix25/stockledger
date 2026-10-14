@@ -120,9 +120,15 @@ export default function NewInvoicePage() {
           </div>
 
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">Amount ({currency.code}) *</label>
-            <div className="relative">
-              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-medium">{currency.symbol}</span>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">
+              Amount ({currency.symbol}) *
+            </label>
+            <div className="flex rounded-xl shadow-sm border border-gray-300 focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-blue-500 overflow-hidden bg-white">
+              {currency.position === "prefix" && (
+                <span className="inline-flex items-center px-4 bg-gray-50 text-gray-600 border-r border-gray-200 text-sm font-semibold select-none">
+                  {currency.symbol}
+                </span>
+              )}
               <input
                 type="number"
                 min="0.01"
@@ -130,9 +136,14 @@ export default function NewInvoicePage() {
                 placeholder="0.00"
                 value={form.amount}
                 onChange={(e) => setForm({ ...form, amount: e.target.value })}
-                className="input-field pl-8"
+                className="flex-1 block w-full border-0 py-3 px-4 text-gray-900 focus:ring-0 text-sm outline-none bg-transparent"
                 required
               />
+              {currency.position === "suffix" && (
+                <span className="inline-flex items-center px-4 bg-gray-50 text-gray-600 border-l border-gray-200 text-sm font-semibold select-none">
+                  {currency.symbol}
+                </span>
+              )}
             </div>
           </div>
 

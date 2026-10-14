@@ -6,14 +6,14 @@ import { ArrowLeft, CreditCard } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { format } from "date-fns";
-import { getSavedCurrency } from "@/lib/currency";
+import { getSavedCurrency, formatMoney, type CurrencyConfig } from "@/lib/currency";
 
 export default function NewPaymentPage() {
   const router = useRouter();
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [currencySymbol, setCurrencySymbol] = useState("$");
+  const [currency, setCurrency] = useState<CurrencyConfig>(getSavedCurrency());
   const [form, setForm] = useState({
     invoice_id: "",
     amount: "",
@@ -23,8 +23,7 @@ export default function NewPaymentPage() {
   });
 
   useEffect(() => {
-    const cur = getSavedCurrency();
-    setCurrencySymbol(cur.symbol);
+    setCurrency(getSavedCurrency());
 
     const load = async () => {
       const supabase = createClient();
@@ -115,22 +114,28 @@ export default function NewPaymentPage() {
                 <option value="">Select an invoice...</option>
                 {invoices.map((i) => (
                   <option key={i.id} value={i.id}>
-                    {(i.customer as any)?.name} — {i.invoice_number} ({currencySymbol}{Number(i.amount).toFixed(2)})
+                    {(i.customer as any)?.name} — {i.invoice_number} ({formatMoney(i.amount, currency)})
                   </option>
                 ))}
               </select>
             )}
             {selectedInvoice && (
               <p className="text-xs text-gray-500 mt-1.5">
-                Invoice total: <span className="font-semibold text-gray-700">{currencySymbol}{Number(selectedInvoice.amount).toFixed(2)}</span>
+                Invoice total: <span className="font-semibold text-gray-700">{formatMoney(selectedInvoice.amount, currency)}</span>
               </p>
             )}
           </div>
 
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">Amount Paid ({currencySymbol}) *</label>
-            <div className="relative">
-              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-medium">{currencySymbol}</span>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">
+              Amount Paid ({currency.symbol}) *
+            </label>
+            <div className="flex rounded-xl shadow-sm border border-gray-300 focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-blue-500 overflow-hidden bg-white">
+              {currency.position === "prefix" && (
+                <span className="inline-flex items-center px-4 bg-gray-50 text-gray-600 border-r border-gray-200 text-sm font-semibold select-none">
+                  {currency.symbol}
+                </span>
+              )}
               <input
                 type="number"
                 min="0.01"
@@ -138,9 +143,14 @@ export default function NewPaymentPage() {
                 placeholder="0.00"
                 value={form.amount}
                 onChange={(e) => setForm({ ...form, amount: e.target.value })}
-                className="input-field pl-8"
+                className="flex-1 block w-full border-0 py-3 px-4 text-gray-900 focus:ring-0 text-sm outline-none bg-transparent"
                 required
               />
+              {currency.position === "suffix" && (
+                <span className="inline-flex items-center px-4 bg-gray-50 text-gray-600 border-l border-gray-200 text-sm font-semibold select-none">
+                  {currency.symbol}
+                </span>
+              )}
             </div>
           </div>
 

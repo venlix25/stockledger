@@ -29,22 +29,20 @@ import {
   ResponsiveContainer,
   Legend,
 } from "recharts";
-import { getSavedCurrency, formatMoney } from "@/lib/currency";
+import { getSavedCurrency, formatMoney, type CurrencyConfig } from "@/lib/currency";
 
 export default function DashboardPage() {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [payments, setPayments] = useState<Payment[]>([]);
   const [userName, setUserName] = useState<string>("Merchant");
-  const [currencySymbol, setCurrencySymbol] = useState<string>("$");
+  const [currency, setCurrency] = useState<CurrencyConfig>(getSavedCurrency());
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const cur = getSavedCurrency();
-    setCurrencySymbol(cur.symbol);
+    setCurrency(getSavedCurrency());
 
     const onCurrencyChange = () => {
-      const updated = getSavedCurrency();
-      setCurrencySymbol(updated.symbol);
+      setCurrency(getSavedCurrency());
     };
     window.addEventListener("currency_changed", onCurrencyChange);
 
@@ -209,7 +207,7 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
         <StatCard
           title="Total Outstanding"
-          value={formatMoney(totalOutstanding, currencySymbol)}
+          value={formatMoney(totalOutstanding, currency)}
           subtitle={`${pendingCount + overdueCount} invoices pending`}
           icon={DollarSign}
           color="orange"
@@ -217,7 +215,7 @@ export default function DashboardPage() {
         />
         <StatCard
           title="Paid This Month"
-          value={formatMoney(paidThisMonth, currencySymbol)}
+          value={formatMoney(paidThisMonth, currency)}
           subtitle={`${payments.length} payment${payments.length === 1 ? "" : "s"} recorded`}
           icon={CheckCircle}
           color="green"
@@ -282,7 +280,7 @@ export default function DashboardPage() {
                         {(inv.customer as any)?.name || "—"}
                       </td>
                       <td className="py-3 font-semibold text-gray-900">
-                        {formatMoney(inv.amount, currencySymbol)}
+                        {formatMoney(inv.amount, currency)}
                       </td>
                       <td className="py-3">
                         <StatusBadge status={inv.status} />
@@ -359,7 +357,7 @@ export default function DashboardPage() {
                   border: "none",
                   boxShadow: "0 4px 24px rgba(0,0,0,0.1)",
                 }}
-                formatter={(val) => [formatMoney(val as number, currencySymbol), ""]}
+                formatter={(val) => [formatMoney(val as number, currency), ""]}
               />
               <Legend />
               <Bar dataKey="paid" fill="#22c55e" radius={[6, 6, 0, 0]} name="Paid" />
@@ -405,7 +403,7 @@ export default function DashboardPage() {
                     </p>
                   </div>
                   <span className="text-sm font-bold text-green-600">
-                    +{formatMoney(pay.amount, currencySymbol)}
+                    +{formatMoney(pay.amount, currency)}
                   </span>
                 </div>
               ))}

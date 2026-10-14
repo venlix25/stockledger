@@ -4,19 +4,20 @@ export interface CurrencyConfig {
   code: string;
   symbol: string;
   label: string;
+  position: "prefix" | "suffix";
 }
 
 export const SUPPORTED_CURRENCIES: CurrencyConfig[] = [
-  { code: "USD", symbol: "$", label: "USD ($) - US Dollar" },
-  { code: "EUR", symbol: "€", label: "EUR (€) - Euro" },
-  { code: "GBP", symbol: "£", label: "GBP (£) - British Pound" },
-  { code: "SGD", symbol: "S$", label: "SGD (S$) - Singapore Dollar" },
-  { code: "AUD", symbol: "A$", label: "AUD (A$) - Australian Dollar" },
-  { code: "CAD", symbol: "C$", label: "CAD (C$) - Canadian Dollar" },
-  { code: "JPY", symbol: "¥", label: "JPY (¥) - Japanese Yen" },
-  { code: "MMK", symbol: "Ks", label: "MMK (Ks) - Myanmar Kyat" },
-  { code: "THB", symbol: "฿", label: "THB (฿) - Thai Baht" },
-  { code: "INR", symbol: "₹", label: "INR (₹) - Indian Rupee" },
+  { code: "USD", symbol: "$", label: "USD ($) - US Dollar", position: "prefix" },
+  { code: "EUR", symbol: "€", label: "EUR (€) - Euro", position: "prefix" },
+  { code: "GBP", symbol: "£", label: "GBP (£) - British Pound", position: "prefix" },
+  { code: "SGD", symbol: "S$", label: "SGD (S$) - Singapore Dollar", position: "prefix" },
+  { code: "AUD", symbol: "A$", label: "AUD (A$) - Australian Dollar", position: "prefix" },
+  { code: "CAD", symbol: "C$", label: "CAD (C$) - Canadian Dollar", position: "prefix" },
+  { code: "JPY", symbol: "¥", label: "JPY (¥) - Japanese Yen", position: "prefix" },
+  { code: "MMK", symbol: "Ks", label: "MMK (Ks) - Myanmar Kyat", position: "suffix" },
+  { code: "THB", symbol: "฿", label: "THB (฿) - Thai Baht", position: "prefix" },
+  { code: "INR", symbol: "₹", label: "INR (₹) - Indian Rupee", position: "prefix" },
 ];
 
 const STORAGE_KEY = "stockledger_currency";
@@ -40,10 +41,27 @@ export function saveCurrency(code: string) {
   }
 }
 
-export function formatMoney(amount: number | string, symbol = "$"): string {
+export function formatMoney(
+  amount: number | string,
+  symbolOrConfig: string | CurrencyConfig = "$"
+): string {
   const num = typeof amount === "number" ? amount : parseFloat(amount) || 0;
-  return `${symbol}${num.toLocaleString(undefined, {
+  const formatted = num.toLocaleString(undefined, {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
-  })}`;
+  });
+
+  if (typeof symbolOrConfig === "object" && symbolOrConfig !== null) {
+    if (symbolOrConfig.position === "suffix") {
+      return `${formatted} ${symbolOrConfig.symbol}`;
+    }
+    return `${symbolOrConfig.symbol}${formatted}`;
+  }
+
+  const str = String(symbolOrConfig || "$");
+  if (str === "Ks" || str === "MMK") {
+    return `${formatted} Ks`;
+  }
+
+  return `${str}${formatted}`;
 }
