@@ -7,7 +7,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { format } from "date-fns";
 import { getSavedCurrency } from "@/lib/currency";
-import { getUserPlan, PLAN_LIMITS } from "@/lib/plan";
+import { getUserPlanFromDB, PLAN_LIMITS } from "@/lib/plan";
 import UpgradeModal from "@/components/UpgradeModal";
 
 export default function NewInvoicePage() {
@@ -47,7 +47,7 @@ export default function NewInvoicePage() {
     if (!form.customer_id) { setError("Please select a customer."); return; }
     if (!form.amount || isNaN(Number(form.amount))) { setError("Please enter a valid amount."); return; }
 
-    const plan = getUserPlan();
+    const plan = await getUserPlanFromDB();
     if (plan === "free" && invoiceCount >= PLAN_LIMITS.free.maxInvoices) {
       setShowUpgradeModal(true);
       return;

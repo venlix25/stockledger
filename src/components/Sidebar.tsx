@@ -25,7 +25,7 @@ const navItems = [
   { href: "/settings", label: "Settings", icon: Settings },
 ];
 
-import { getUserPlan, type UserPlan } from "@/lib/plan";
+import { getUserSubscriptionDetails, type SubscriptionDetails, type UserPlan } from "@/lib/plan";
 import UpgradeModal from "@/components/UpgradeModal";
 import { Zap, ShieldCheck } from "lucide-react";
 
@@ -33,14 +33,17 @@ export default function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const [userName, setUserName] = useState<string>("Merchant");
-  const [plan, setPlan] = useState<UserPlan>("free");
+  const [subDetails, setSubDetails] = useState<SubscriptionDetails | null>(null);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(true);
+
+  const plan = subDetails?.plan || "free";
 
   useEffect(() => {
-    setPlan(getUserPlan());
+    getUserSubscriptionDetails().then(setSubDetails);
 
     const handlePlanUpdate = () => {
-      setPlan(getUserPlan());
+      getUserSubscriptionDetails().then(setSubDetails);
     };
     window.addEventListener("plan_updated", handlePlanUpdate);
 
@@ -51,6 +54,7 @@ export default function Sidebar() {
       } = await supabase.auth.getUser();
 
       if (user) {
+        setIsAuthenticated(true);
         // Check saved business name first
         const savedBizName = localStorage.getItem("stockledger_business_name");
         if (savedBizName) {
@@ -61,6 +65,9 @@ export default function Sidebar() {
           const prefix = user.email.split("@")[0];
           setUserName(prefix.charAt(0).toUpperCase() + prefix.slice(1));
         }
+      } else {
+        setIsAuthenticated(false);
+        setUserName("Guest Visitor");
       }
     };
     fetchUser();
@@ -99,8 +106,12 @@ export default function Sidebar() {
 
       {/* User Greeting */}
       <div className="px-5 py-4 border-b border-gray-50 bg-slate-50/50">
-        <p className="text-xs text-gray-400">Signed in as</p>
-        <p className="text-sm font-semibold text-gray-800 truncate">{userName} 👋</p>
+        <p className="text-xs text-gray-400">
+          {isAuthenticated ? "Signed in as" : "Preview Mode"}
+        </p>
+        <p className="text-sm font-semibold text-gray-800 truncate">
+          {isAuthenticated ? `${userName} 👋` : "Showcase Visitor 👋"}
+        </p>
       </div>
 
       {/* Nav */}
@@ -130,54 +141,91 @@ export default function Sidebar() {
         })}
       </nav>
 
-      {/* Plan Status Card */}
-      <div className="mx-3 mb-3 p-3.5 bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-100/60 rounded-2xl">
-        <div className="flex items-center justify-between mb-1">
-          <div className="flex items-center gap-1.5">
-            {plan === "pro" ? (
-              <ShieldCheck className="w-4 h-4 text-green-600" />
-            ) : (
-              <Zap className="w-4 h-4 text-amber-500 fill-amber-500" />
-            )}
-            <span className="text-xs font-bold text-gray-900">
-              {plan === "pro" ? "Pro Unlimited" : "Free Plan"}
+      {/* Plan Status or Showcase Card */}
+      {isAuthenticated ? (
+        <div className="mx-3 mb-3 p-3.5 bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-100/60 rounded-2xl">
+          <div className="flex items-center justify-between mb-1">
+            <div className="flex items-center gap-1.5">
+              {plan === "pro" ? (
+                <ShieldCheck className="w-4 h-4 text-green-600" />
+              ) : (
+                <Zap className="w-4 h-4 text-amber-500 fill-amber-500" />
+              )}
+              <span className="text-xs font-bold text-gray-900">
+                {plan === "pro" ? "Pro Unlimited" : subDetails?.isExpired ? "Pro Expired" : "Free Plan"}
+              </span>
+            </div>
+            <span
+              className={clsx(
+                "text-[10px] font-bold px-1.5 py-0.5 rounded-full uppercase",
+                plan === "pro"
+                  ? "bg-green-100 text-green-700"
+                  : subDetails?.isExpired
+                  ? "bg-red-100 text-red-700"
+                  : "bg-amber-100 text-amber-800"
+              )}
+            >
+              {plan === "pro"
+                ? `${subDetails?.daysRemaining ?? 0}d Left`
+                : subDetails?.isExpired
+                ? "Expired"
+                : "5 Cust. Max"}
             </span>
           </div>
-          <span
-            className={clsx(
-              "text-[10px] font-bold px-1.5 py-0.5 rounded-full uppercase",
-              plan === "pro"
-                ? "bg-green-100 text-green-700"
-                : "bg-amber-100 text-amber-800"
-            )}
-          >
-            {plan === "pro" ? "Active" : "5 Cust. Max"}
-          </span>
+          <p className="text-[11px] text-gray-500 mb-2.5">
+            {plan === "pro"
+              ? subDetails?.daysRemaining && subDetails.daysRemaining > 0
+                ? `${subDetails.daysRemaining} days left · ${subDetails.tier === "yearly" ? "Yearly" : "Quarterly"}`
+                : "Unlimited invoices, customers & global currencies."
+              : subDetails?.isExpired
+              ? "Your subscription has ended. Renew now to restore unlimited access."
+              : "Free tier capped at 5 customers & 10 invoices."}
+          </p>
+          {plan === "free" && (
+            <button
+              onClick={() => setShowUpgradeModal(true)}
+              className="w-full py-1.5 px-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl text-xs font-bold shadow-sm transition-all flex items-center justify-center gap-1"
+            >
+              <Zap className="w-3.5 h-3.5 fill-white" /> {subDetails?.isExpired ? "Renew Pro Plan" : "Upgrade to Pro"}
+            </button>
+          )}
         </div>
-        <p className="text-[11px] text-gray-500 mb-2.5">
-          {plan === "pro"
-            ? "Unlimited invoices, customers & global currencies."
-            : "Free tier capped at 5 customers & 10 invoices."}
-        </p>
-        {plan === "free" && (
-          <button
-            onClick={() => setShowUpgradeModal(true)}
-            className="w-full py-1.5 px-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl text-xs font-bold shadow-sm transition-all flex items-center justify-center gap-1"
+      ) : (
+        <div className="mx-3 mb-3 p-3.5 bg-gradient-to-br from-indigo-50 to-blue-50 border border-indigo-100/80 rounded-2xl">
+          <div className="flex items-center gap-1.5 mb-1 text-xs font-bold text-indigo-900">
+            <Sparkles className="w-4 h-4 text-indigo-600" />
+            <span>Product Showcase</span>
+          </div>
+          <p className="text-[11px] text-gray-500 mb-2.5 leading-relaxed">
+            Test-driving wholesale ledger features. Create a free account to track your real business.
+          </p>
+          <Link
+            href="/"
+            className="w-full py-2 px-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-sm transition-all flex items-center justify-center gap-1 text-center"
           >
-            <Zap className="w-3.5 h-3.5 fill-white" /> Upgrade to Pro
-          </button>
-        )}
-      </div>
+            Create Free Account →
+          </Link>
+        </div>
+      )}
 
-      {/* Logout */}
+      {/* Logout or Sign In */}
       <div className="px-3 pb-4 pt-2 border-t border-gray-100">
-        <button
-          onClick={handleLogout}
-          className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium text-red-600 hover:bg-red-50 transition-all"
-        >
-          <LogOut className="w-4 h-4 text-red-500" />
-          Sign Out
-        </button>
+        {isAuthenticated ? (
+          <button
+            onClick={handleLogout}
+            className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium text-red-600 hover:bg-red-50 transition-all"
+          >
+            <LogOut className="w-4 h-4 text-red-500" />
+            Sign Out
+          </button>
+        ) : (
+          <Link
+            href="/"
+            className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-xs font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 transition-all"
+          >
+            Sign In / Register
+          </Link>
+        )}
       </div>
 
       <UpgradeModal

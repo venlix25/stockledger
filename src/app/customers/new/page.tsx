@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { getUserPlan, PLAN_LIMITS } from "@/lib/plan";
+import { getUserPlanFromDB, PLAN_LIMITS } from "@/lib/plan";
 import UpgradeModal from "@/components/UpgradeModal";
 import { ArrowLeft, Users } from "lucide-react";
 import Link from "next/link";
@@ -30,7 +30,7 @@ export default function NewCustomerPage() {
     e.preventDefault();
     if (!form.name.trim()) { setError("Customer name is required."); return; }
 
-    const plan = getUserPlan();
+    const plan = await getUserPlanFromDB();
     if (plan === "free" && customerCount >= PLAN_LIMITS.free.maxCustomers) {
       setShowUpgradeModal(true);
       return;

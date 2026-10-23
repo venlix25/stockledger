@@ -30,6 +30,8 @@ import {
   Legend,
 } from "recharts";
 import { getSavedCurrency, formatMoney, type CurrencyConfig } from "@/lib/currency";
+import { getUserSubscriptionDetails, type SubscriptionDetails } from "@/lib/plan";
+import { ShieldCheck, Zap, Sparkles } from "lucide-react";
 
 export default function DashboardPage() {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
@@ -37,8 +39,23 @@ export default function DashboardPage() {
   const [userName, setUserName] = useState<string>("Merchant");
   const [currency, setCurrency] = useState<CurrencyConfig>(getSavedCurrency());
   const [loading, setLoading] = useState(true);
+  const [subDetails, setSubDetails] = useState<SubscriptionDetails | null>(null);
+  const [showPaymentSuccess, setShowPaymentSuccess] = useState(false);
 
   useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("payment_success") === "true") {
+        setShowPaymentSuccess(true);
+      }
+    }
+
+    const refreshPlan = () => {
+      getUserSubscriptionDetails().then(setSubDetails);
+    };
+    refreshPlan();
+    window.addEventListener("plan_updated", refreshPlan);
+
     setCurrency(getSavedCurrency());
 
     const onCurrencyChange = () => {
@@ -83,7 +100,10 @@ export default function DashboardPage() {
     };
     load();
 
-    return () => window.removeEventListener("currency_changed", onCurrencyChange);
+    return () => {
+      window.removeEventListener("currency_changed", onCurrencyChange);
+      window.removeEventListener("plan_updated", refreshPlan);
+    };
   }, []);
 
   // Time-based greeting
@@ -179,6 +199,93 @@ export default function DashboardPage() {
           </Link>
         </div>
       </div>
+
+      {/* Payment Success Celebratory Banner */}
+      {showPaymentSuccess && (
+        <div className="mb-8 p-5 bg-gradient-to-r from-emerald-500 via-teal-600 to-blue-600 text-white rounded-3xl shadow-lg shadow-emerald-500/10 flex items-start justify-between gap-4">
+          <div className="flex items-start gap-3.5">
+            <div className="w-10 h-10 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center flex-shrink-0 mt-0.5">
+              <Sparkles className="w-5 h-5 text-yellow-300" />
+            </div>
+            <div>
+              <h3 className="text-base font-bold">
+                Payment Verified — Welcome to StockLedger Pro! 🎉
+              </h3>
+              <p className="text-sm text-emerald-100 mt-0.5 leading-relaxed">
+                All premium wholesale features are now unlocked. You have unlimited invoices, unlimited customers, overdue tracking, and all 10 currencies.
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => setShowPaymentSuccess(false)}
+            className="text-xs bg-white/20 hover:bg-white/30 text-white px-3 py-1.5 rounded-xl font-bold transition-colors whitespace-nowrap"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
+
+      {/* Subscription Status & Countdown Banner */}
+      {subDetails && subDetails.plan === "pro" && (
+        <div className="mb-8 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200/80 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-sm shadow-blue-200 flex-shrink-0">
+              <ShieldCheck className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-bold text-blue-900">
+                  StockLedger Pro Active
+                </span>
+                <span className="text-[11px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-blue-600 text-white">
+                  {subDetails.tier === "yearly" ? "Yearly" : "Quarterly"}
+                </span>
+              </div>
+              <p className="text-xs text-blue-700 mt-0.5">
+                {subDetails.daysRemaining > 0 ? (
+                  <>
+                    <strong className="font-bold text-blue-900">{subDetails.daysRemaining} days remaining</strong> · Expires on{" "}
+                    {subDetails.expiresAt ? new Date(subDetails.expiresAt).toLocaleDateString() : "end of term"}
+                  </>
+                ) : (
+                  "Active subscription"
+                )}
+              </p>
+            </div>
+          </div>
+          <Link
+            href="/settings"
+            className="text-xs font-bold text-blue-700 hover:text-blue-900 bg-white border border-blue-200 px-3 py-1.5 rounded-xl transition-all shadow-sm"
+          >
+            Manage Subscription →
+          </Link>
+        </div>
+      )}
+
+      {/* Subscription Expired Alert */}
+      {subDetails && subDetails.isExpired && (
+        <div className="mb-8 p-4 bg-amber-50 border-2 border-amber-300 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-amber-500 text-white flex items-center justify-center shadow-sm shadow-amber-200 flex-shrink-0">
+              <Zap className="w-5 h-5" />
+            </div>
+            <div>
+              <span className="text-sm font-bold text-amber-900">
+                Your Pro Subscription Has Expired
+              </span>
+              <p className="text-xs text-amber-800 mt-0.5">
+                Your account has reverted to the Free Starter tier (max 5 customers, 10 invoices). Renew your Pro plan to restore unlimited records.
+              </p>
+            </div>
+          </div>
+          <Link
+            href="/pricing"
+            className="text-xs font-bold text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 px-4 py-2 rounded-xl transition-all shadow-sm whitespace-nowrap"
+          >
+            Renew Pro Plan ($25) →
+          </Link>
+        </div>
+      )}
 
       {/* Due Soon Alert */}
       {dueSoonInvoices.length > 0 && (
