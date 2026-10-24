@@ -3,6 +3,14 @@ import { createClient } from "@supabase/supabase-js";
 import { verifyNowPaymentsSignature } from "@/lib/nowpayments";
 import { processPaymentWebhook } from "@/lib/payment-processor";
 
+// GET handler — allows NOWPayments (and you) to verify the webhook URL is reachable
+export async function GET() {
+  return NextResponse.json(
+    { status: "ok", service: "stockledger-nowpayments-webhook" },
+    { status: 200 }
+  );
+}
+
 export async function POST(req: NextRequest) {
   const ipnSecret = process.env.NOWPAYMENTS_IPN_SECRET;
   if (!ipnSecret) {
