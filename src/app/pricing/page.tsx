@@ -32,6 +32,7 @@ function PricingContent() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [user, setUser] = useState<any>(null);
   const [activeSub, setActiveSub] = useState<any>(null);
+  const [userLoaded, setUserLoaded] = useState(false);
 
   // Order verification states
   const [pollingOrder, setPollingOrder] = useState<string | null>(orderIdParam);
@@ -55,6 +56,7 @@ function PricingContent() {
     const supabase = createClient();
     supabase.auth.getUser().then(({ data }) => {
       setUser(data?.user || null);
+      setUserLoaded(true);
       if (data?.user) {
         supabase
           .from("subscriptions")
@@ -565,8 +567,33 @@ export default function PricingPage() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen flex items-center justify-center p-8 text-gray-500 text-sm">
-          <RefreshCw className="w-5 h-5 animate-spin mr-2" /> Loading pricing plans...
+        <div className="min-h-screen bg-gradient-to-b from-slate-50 via-white to-slate-50 py-12 px-4">
+          <div className="max-w-5xl mx-auto">
+            <div className="text-center mb-10">
+              <h1 className="text-4xl font-black text-gray-900 mb-3">Choose Your Plan</h1>
+              <p className="text-gray-500 text-lg">Unlock unlimited invoices, customers & payments</p>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-3xl mx-auto">
+              {/* Quarterly skeleton */}
+              <div className="rounded-2xl border-2 border-blue-500 bg-white p-8 shadow-lg">
+                <div className="text-sm font-bold text-blue-600 uppercase mb-2">Quarterly Plan</div>
+                <div className="text-5xl font-black text-gray-900 mb-1">$25</div>
+                <div className="text-gray-500 mb-6">per 90 days</div>
+                <div className="w-full py-3 rounded-xl bg-blue-600 text-white font-bold text-center flex items-center justify-center gap-2">
+                  <RefreshCw className="w-4 h-4 animate-spin" /> Loading...
+                </div>
+              </div>
+              {/* Yearly skeleton */}
+              <div className="rounded-2xl border-2 border-gray-200 bg-white p-8 shadow">
+                <div className="text-sm font-bold text-gray-500 uppercase mb-2">Yearly Plan</div>
+                <div className="text-5xl font-black text-gray-900 mb-1">$79</div>
+                <div className="text-gray-500 mb-6">per year — Save $21</div>
+                <div className="w-full py-3 rounded-xl bg-gray-800 text-white font-bold text-center flex items-center justify-center gap-2">
+                  <RefreshCw className="w-4 h-4 animate-spin" /> Loading...
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       }
     >
