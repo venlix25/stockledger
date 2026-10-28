@@ -22,6 +22,7 @@ export default function NewInvoicePage() {
     customer_id: "",
     amount: "",
     due_date: format(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), "yyyy-MM-dd"),
+    status: "pending" as "pending" | "paid",
     notes: "",
   });
 
@@ -44,33 +45,63 @@ export default function NewInvoicePage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (loading) return; // Immediate lock to prevent double clicks
     if (!form.customer_id) { setError("Please select a customer."); return; }
-    if (!form.amount || isNaN(Number(form.amount))) { setError("Please enter a valid amount."); return; }
-
-    const plan = await getUserPlanFromDB();
-    if (plan === "free" && invoiceCount >= PLAN_LIMITS.free.maxInvoices) {
-      setShowUpgradeModal(true);
+    if (!form.amount || isNaN(Number(form.amount)) || Number(form.amount) <= 0) {
+      setError("Please enter a valid amount.");
       return;
     }
 
     setLoading(true);
-    const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) { router.push("/"); return; }
+    setError("");
 
-    const invoiceNumber = `INV-${Date.now().toString().slice(-5)}`;
-    const { error: err } = await supabase.from("invoices").insert({
-      user_id: user.id,
-      customer_id: form.customer_id,
-      invoice_number: invoiceNumber,
-      amount: parseFloat(form.amount),
-      due_date: form.due_date,
-      notes: form.notes || null,
-      status: "pending",
-    });
+    try {
+      const plan = await getUserPlanFromDB();
+      if (plan === "free" && invoiceCount >= PLAN_LIMITS.free.maxInvoices) {
+        setShowUpgradeModal(true);
+        setLoading(false);
+        return;
+      }
 
-    if (err) { setError(err.message); setLoading(false); return; }
-    router.push("/invoices");
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) { router.push("/"); return; }
+
+      const invoiceNumber = `INV-${Date.now().toString().slice(-5)}`;
+      const { data: newInv, error: err } = await supabase
+        .from("invoices")
+        .insert({
+          user_id: user.id,
+          customer_id: form.customer_id,
+          invoice_number: invoiceNumber,
+          amount: parseFloat(form.amount),
+          due_date: form.due_date,
+          notes: form.notes || null,
+          status: form.status,
+        })
+        .select()
+        .single();
+
+      if (err) { setError(err.message); setLoading(false); return; }
+
+      // If user selected "paid" upon creation, automatically log the payment!
+      if (form.status === "paid" && newInv) {
+        await supabase.from("payments").insert({
+          user_id: user.id,
+          invoice_id: newInv.id,
+          customer_id: form.customer_id,
+          amount: parseFloat(form.amount),
+          payment_date: format(new Date(), "yyyy-MM-dd"),
+          method: "cash",
+          notes: "Initial full payment recorded at invoice creation",
+        });
+      }
+
+      router.push("/invoices");
+    } catch (e: any) {
+      setError(e?.message || "Failed to create invoice");
+      setLoading(false);
+    }
   };
 
   return (
@@ -159,6 +190,53 @@ export default function NewInvoicePage() {
           </div>
 
           <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">Initial Status</label>
+            <div className="grid grid-cols-2 gap-3">
+              <label
+                className={`flex items-center gap-3 p-3.5 rounded-xl border cursor-pointer transition-all ${
+                  form.status === "pending"
+                    ? "border-blue-600 bg-blue-50/50 text-blue-900 font-semibold"
+                    : "border-gray-200 hover:bg-gray-50 text-gray-700"
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="status"
+                  value="pending"
+                  checked={form.status === "pending"}
+                  onChange={() => setForm({ ...form, status: "pending" })}
+                  className="text-blue-600 focus:ring-blue-500"
+                />
+                <div>
+                  <div className="text-sm font-semibold">⏳ Unpaid (Pending)</div>
+                  <div className="text-xs text-gray-500">Awaiting customer payment</div>
+                </div>
+              </label>
+
+              <label
+                className={`flex items-center gap-3 p-3.5 rounded-xl border cursor-pointer transition-all ${
+                  form.status === "paid"
+                    ? "border-green-600 bg-green-50/50 text-green-900 font-semibold"
+                    : "border-gray-200 hover:bg-gray-50 text-gray-700"
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="status"
+                  value="paid"
+                  checked={form.status === "paid"}
+                  onChange={() => setForm({ ...form, status: "paid" })}
+                  className="text-green-600 focus:ring-green-500"
+                />
+                <div>
+                  <div className="text-sm font-semibold">✓ Paid (Settled)</div>
+                  <div className="text-xs text-gray-500">Auto-records payment</div>
+                </div>
+              </label>
+            </div>
+          </div>
+
+          <div>
             <label className="block text-sm font-semibold text-gray-700 mb-2">Notes (optional)</label>
             <textarea
               placeholder="Add any notes about this invoice..."
@@ -173,9 +251,16 @@ export default function NewInvoicePage() {
             <button
               type="submit"
               disabled={loading || customers.length === 0}
-              className="btn-primary flex-1 justify-center"
+              className="btn-primary flex-1 justify-center disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading ? "Creating..." : "✓ Create Invoice"}
+              {loading ? (
+                <span className="inline-flex items-center gap-2">
+                  <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  Creating Invoice...
+                </span>
+              ) : (
+                "✓ Create Invoice"
+              )}
             </button>
             <Link href="/invoices" className="btn-secondary flex-1 justify-center">
               Cancel

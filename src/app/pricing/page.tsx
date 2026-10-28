@@ -121,6 +121,7 @@ function PricingContent() {
   }, [pollingOrder, pollCount]);
 
   const handleCheckout = async (plan: "quarterly" | "yearly") => {
+    if (loading) return; // Prevent double checkout initiation
     setErrorMessage(null);
     if (!user) {
       router.push("/?redirect=/pricing");

@@ -41,35 +41,46 @@ export default function NewPaymentPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (loading) return; // Prevent double clicks
     if (!form.invoice_id) { setError("Please select an invoice."); return; }
-    if (!form.amount || isNaN(Number(form.amount))) { setError("Enter a valid amount."); return; }
-
-    setLoading(true);
-    const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) { router.push("/"); return; }
-
-    const invoice = invoices.find((i) => i.id === form.invoice_id);
-    if (!invoice) { setError("Invoice not found."); setLoading(false); return; }
-
-    const { error: err } = await supabase.from("payments").insert({
-      user_id: user.id,
-      invoice_id: form.invoice_id,
-      customer_id: invoice.customer_id,
-      amount: parseFloat(form.amount),
-      payment_date: form.payment_date,
-      method: form.method,
-      notes: form.notes || null,
-    });
-
-    if (err) { setError(err.message); setLoading(false); return; }
-
-    // Mark invoice as paid if full amount
-    if (parseFloat(form.amount) >= Number(invoice.amount)) {
-      await supabase.from("invoices").update({ status: "paid" }).eq("id", form.invoice_id);
+    if (!form.amount || isNaN(Number(form.amount)) || Number(form.amount) <= 0) {
+      setError("Enter a valid amount.");
+      return;
     }
 
-    router.push("/payments");
+    setLoading(true);
+    setError("");
+
+    try {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) { router.push("/"); return; }
+
+      const invoice = invoices.find((i) => i.id === form.invoice_id);
+      if (!invoice) { setError("Invoice not found."); setLoading(false); return; }
+
+      const { error: err } = await supabase.from("payments").insert({
+        user_id: user.id,
+        invoice_id: form.invoice_id,
+        customer_id: invoice.customer_id,
+        amount: parseFloat(form.amount),
+        payment_date: form.payment_date,
+        method: form.method,
+        notes: form.notes || null,
+      });
+
+      if (err) { setError(err.message); setLoading(false); return; }
+
+      // Mark invoice as paid if full amount
+      if (parseFloat(form.amount) >= Number(invoice.amount)) {
+        await supabase.from("invoices").update({ status: "paid" }).eq("id", form.invoice_id);
+      }
+
+      router.push("/payments");
+    } catch (e: any) {
+      setError(e?.message || "Failed to record payment");
+      setLoading(false);
+    }
   };
 
   return (
@@ -194,8 +205,19 @@ export default function NewPaymentPage() {
           </div>
 
           <div className="flex gap-3 pt-2">
-            <button type="submit" disabled={loading || invoices.length === 0} className="btn-success flex-1 text-center justify-center">
-              {loading ? "Recording..." : "✓ Record Payment"}
+            <button
+              type="submit"
+              disabled={loading || invoices.length === 0}
+              className="btn-success flex-1 text-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {loading ? (
+                <span className="inline-flex items-center gap-2">
+                  <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  Recording Payment...
+                </span>
+              ) : (
+                "✓ Record Payment"
+              )}
             </button>
             <Link href="/payments" className="btn-secondary flex-1 justify-center">Cancel</Link>
           </div>

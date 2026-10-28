@@ -1,5 +1,5 @@
 // Supabase Database Types
-export type InvoiceStatus = 'paid' | 'pending' | 'overdue';
+export type InvoiceStatus = 'paid' | 'pending' | 'overdue' | 'cancelled';
 
 export interface Customer {
   id: string;

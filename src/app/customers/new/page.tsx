@@ -28,6 +28,7 @@ export default function NewCustomerPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (loading) return; // Prevent double submit
     if (!form.name.trim()) { setError("Customer name is required."); return; }
 
     setLoading(true);
@@ -134,8 +135,19 @@ export default function NewCustomerPage() {
             />
           </div>
           <div className="flex gap-3 pt-2">
-            <button type="submit" disabled={loading} className="btn-primary flex-1 justify-center">
-              {loading ? "Saving..." : "✓ Save Customer"}
+            <button
+              type="submit"
+              disabled={loading}
+              className="btn-primary flex-1 justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {loading ? (
+                <span className="inline-flex items-center gap-2">
+                  <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  Saving Customer...
+                </span>
+              ) : (
+                "✓ Save Customer"
+              )}
             </button>
             <Link href="/customers" className="btn-secondary flex-1 justify-center">Cancel</Link>
           </div>
