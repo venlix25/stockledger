@@ -2,17 +2,24 @@
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import type { Customer } from "@/types";
-import { Plus, Search, Users, Phone, Mail, Trash2, DollarSign } from "lucide-react";
+import { Plus, Search, Users, Phone, Mail, Trash2 } from "lucide-react";
 import Link from "next/link";
 
 export default function CustomersPage() {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [deleting, setDeleting] = useState<string | null>(null);
 
   const loadCustomers = async () => {
     const supabase = createClient();
-    const { data } = await supabase.from("customers").select("*").order("name");
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    const { data } = await supabase
+      .from("customers")
+      .select("*")
+      .eq("user_id", user.id)
+      .order("name");
     setCustomers(data || []);
     setLoading(false);
   };
@@ -21,9 +28,11 @@ export default function CustomersPage() {
 
   const handleDelete = async (id: string) => {
     if (!confirm("Delete this customer and all their invoices?")) return;
+    setDeleting(id);
     const supabase = createClient();
     await supabase.from("customers").delete().eq("id", id);
-    loadCustomers();
+    setCustomers((prev) => prev.filter((c) => c.id !== id));
+    setDeleting(null);
   };
 
   const filtered = customers.filter((c) =>
@@ -78,7 +87,8 @@ export default function CustomersPage() {
                 </div>
                 <button
                   onClick={() => handleDelete(c.id)}
-                  className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg text-red-400 hover:bg-red-50 transition-all"
+                  disabled={deleting === c.id}
+                  className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg text-red-400 hover:bg-red-50 transition-all disabled:opacity-50"
                 >
                   <Trash2 className="w-4 h-4" />
                 </button>

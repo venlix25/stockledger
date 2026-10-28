@@ -13,7 +13,7 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE TABLE IF NOT EXISTS orders (
   id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
-  plan TEXT NOT NULL CHECK (plan IN ('monthly', 'yearly')),
+  plan TEXT NOT NULL CHECK (plan IN ('quarterly', 'yearly')),
   amount_usd NUMERIC(10,2) NOT NULL,
   nowpayments_payment_id TEXT,
   nowpayments_order_id TEXT,
@@ -30,7 +30,7 @@ CREATE TABLE IF NOT EXISTS orders (
 CREATE TABLE IF NOT EXISTS subscriptions (
   id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
-  plan TEXT NOT NULL CHECK (plan IN ('monthly', 'yearly')),
+  plan TEXT NOT NULL CHECK (plan IN ('quarterly', 'yearly')),
   status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'active', 'expired', 'cancelled')),
   starts_at TIMESTAMPTZ,
   expires_at TIMESTAMPTZ,

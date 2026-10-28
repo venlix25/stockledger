@@ -30,17 +30,33 @@ export default function NewCustomerPage() {
     e.preventDefault();
     if (!form.name.trim()) { setError("Customer name is required."); return; }
 
-    const plan = await getUserPlanFromDB();
-    if (plan === "free" && customerCount >= PLAN_LIMITS.free.maxCustomers) {
-      setShowUpgradeModal(true);
-      return;
-    }
-
     setLoading(true);
+    setError("");
 
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { router.push("/"); return; }
+
+    // Check for duplicate name (case-insensitive) before inserting
+    const { data: existing } = await supabase
+      .from("customers")
+      .select("id")
+      .eq("user_id", user.id)
+      .ilike("name", form.name.trim())
+      .limit(1);
+
+    if (existing && existing.length > 0) {
+      setError(`A customer named "${form.name.trim()}" already exists. Please use a different name.`);
+      setLoading(false);
+      return;
+    }
+
+    const plan = await getUserPlanFromDB();
+    if (plan === "free" && customerCount >= PLAN_LIMITS.free.maxCustomers) {
+      setShowUpgradeModal(true);
+      setLoading(false);
+      return;
+    }
 
     const { error: err } = await supabase.from("customers").insert({
       user_id: user.id,
