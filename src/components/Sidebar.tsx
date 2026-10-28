@@ -32,7 +32,7 @@ import { Zap, ShieldCheck } from "lucide-react";
 export default function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
-  const [userName, setUserName] = useState<string>("Merchant");
+  const [userName, setUserName] = useState<string>("");
   const [subDetails, setSubDetails] = useState<SubscriptionDetails | null>(null);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(true);
@@ -55,30 +55,24 @@ export default function Sidebar() {
 
       if (user) {
         setIsAuthenticated(true);
-        // Check saved business name first
-        const savedBizName = localStorage.getItem("stockledger_business_name");
-        if (savedBizName) {
-          setUserName(savedBizName);
-        } else if (user.user_metadata?.full_name) {
+        if (user.user_metadata?.full_name) {
           setUserName(user.user_metadata.full_name);
+        } else if (user.user_metadata?.name) {
+          setUserName(user.user_metadata.name);
         } else if (user.email) {
           const prefix = user.email.split("@")[0];
           setUserName(prefix.charAt(0).toUpperCase() + prefix.slice(1));
+        } else {
+          setUserName("User");
         }
       } else {
         setIsAuthenticated(false);
-        setUserName("Guest Visitor");
+        setUserName("");
       }
     };
     fetchUser();
 
-    const handleProfileUpdate = () => {
-      const savedBizName = localStorage.getItem("stockledger_business_name");
-      if (savedBizName) setUserName(savedBizName);
-    };
-    window.addEventListener("profile_updated", handleProfileUpdate);
     return () => {
-      window.removeEventListener("profile_updated", handleProfileUpdate);
       window.removeEventListener("plan_updated", handlePlanUpdate);
     };
   }, []);
@@ -106,11 +100,10 @@ export default function Sidebar() {
 
       {/* User Greeting */}
       <div className="px-5 py-4 border-b border-gray-50 bg-slate-50/50">
-        <p className="text-xs text-gray-400">
-          {isAuthenticated ? "Signed in as" : "Preview Mode"}
-        </p>
         <p className="text-sm font-semibold text-gray-800 truncate">
-          {isAuthenticated ? `${userName} 👋` : "Showcase Visitor 👋"}
+          {isAuthenticated
+            ? (userName ? `Hello, ${userName} 👋` : "Hello 👋")
+            : "Showcase Visitor 👋"}
         </p>
       </div>
 

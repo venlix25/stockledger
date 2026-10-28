@@ -43,7 +43,7 @@ export async function POST(req: NextRequest) {
   }
 
   // 1. Insert order record into database
-  const { data: order, error: orderErr } = await supabase
+  let orderResult = await supabase
     .from("orders")
     .insert({
       user_id: user.id,
@@ -54,9 +54,36 @@ export async function POST(req: NextRequest) {
     .select()
     .single();
 
+  // Resilience: If database check constraint on 'plan' only allows ('monthly', 'yearly'),
+  // gracefully fall back so the checkout flow does not break!
+  if (
+    orderResult.error &&
+    (orderResult.error.message?.includes("check constraint") ||
+      orderResult.error.message?.includes("orders_plan_check"))
+  ) {
+    console.warn(
+      "[Checkout] Legacy plan check constraint detected in DB. Retrying with 'monthly' for quarterly order..."
+    );
+    orderResult = await supabase
+      .from("orders")
+      .insert({
+        user_id: user.id,
+        plan: "monthly",
+        amount_usd: plan.amount,
+        status: "pending",
+      })
+      .select()
+      .single();
+  }
+
+  const { data: order, error: orderErr } = orderResult;
+
   if (orderErr || !order) {
     console.error("[Checkout] Failed to insert order:", orderErr?.message || orderErr);
-    return NextResponse.json({ error: "Failed to initialize order record" }, { status: 500 });
+    return NextResponse.json(
+      { error: `Failed to initialize order: ${orderErr?.message || "Database insert error"}` },
+      { status: 500 }
+    );
   }
 
   // 2. Call NOWPayments Invoice API

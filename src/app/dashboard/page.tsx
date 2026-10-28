@@ -36,7 +36,7 @@ import { ShieldCheck, Zap, Sparkles } from "lucide-react";
 export default function DashboardPage() {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [payments, setPayments] = useState<Payment[]>([]);
-  const [userName, setUserName] = useState<string>("Merchant");
+  const [userName, setUserName] = useState<string>("");
   const [currency, setCurrency] = useState<CurrencyConfig>(getSavedCurrency());
   const [loading, setLoading] = useState(true);
   const [subDetails, setSubDetails] = useState<SubscriptionDetails | null>(null);
@@ -83,14 +83,15 @@ export default function DashboardPage() {
 
       const user = userRes?.user;
       if (user) {
-        const savedBiz = localStorage.getItem("stockledger_business_name");
-        if (savedBiz) {
-          setUserName(savedBiz);
-        } else if (user.user_metadata?.full_name) {
+        if (user.user_metadata?.full_name) {
           setUserName(user.user_metadata.full_name);
+        } else if (user.user_metadata?.name) {
+          setUserName(user.user_metadata.name);
         } else if (user.email) {
           const prefix = user.email.split("@")[0];
           setUserName(prefix.charAt(0).toUpperCase() + prefix.slice(1));
+        } else {
+          setUserName("User");
         }
       }
 
@@ -178,7 +179,7 @@ export default function DashboardPage() {
       <div className="flex items-center justify-between mb-8">
         <div>
           <h2 className="text-2xl font-bold text-gray-900">
-            {getGreeting()}, {userName}! 👋
+            {userName ? `Hello, ${userName}! 👋` : "Hello! 👋"}
           </h2>
           <p className="text-gray-500 text-sm mt-1">
             Here&apos;s what&apos;s happening with your business today.

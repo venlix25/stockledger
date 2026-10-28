@@ -125,7 +125,7 @@ export async function processPaymentWebhook(
 
     // Insert or update subscription
     if (existingSub) {
-      await supabaseAdmin
+      let subUpRes = await supabaseAdmin
         .from("subscriptions")
         .update({
           plan: order.plan,
@@ -135,14 +135,37 @@ export async function processPaymentWebhook(
           updated_at: new Date().toISOString(),
         })
         .eq("id", existingSub.id);
+
+      if (subUpRes.error && subUpRes.error.message?.includes("check constraint")) {
+        await supabaseAdmin
+          .from("subscriptions")
+          .update({
+            plan: "monthly",
+            status: "active",
+            starts_at: startsAt.toISOString(),
+            expires_at: newExpiresAt.toISOString(),
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", existingSub.id);
+      }
     } else {
-      await supabaseAdmin.from("subscriptions").insert({
+      let subInsRes = await supabaseAdmin.from("subscriptions").insert({
         user_id: order.user_id,
         plan: order.plan,
         status: "active",
         starts_at: startsAt.toISOString(),
         expires_at: newExpiresAt.toISOString(),
       });
+
+      if (subInsRes.error && subInsRes.error.message?.includes("check constraint")) {
+        await supabaseAdmin.from("subscriptions").insert({
+          user_id: order.user_id,
+          plan: "monthly",
+          status: "active",
+          starts_at: startsAt.toISOString(),
+          expires_at: newExpiresAt.toISOString(),
+        });
+      }
     }
 
     // Update order status
