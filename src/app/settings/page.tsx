@@ -27,6 +27,10 @@ import {
   Copy,
   ChevronRight,
   UserCheck,
+  Moon,
+  Sun,
+  Sparkles,
+  Keyboard,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -36,6 +40,7 @@ import {
   type SubscriptionDetails,
 } from "@/lib/plan";
 import UpgradeModal from "@/components/UpgradeModal";
+import { AVAILABLE_THEMES, getSavedTheme, saveTheme, ThemeMode } from "@/lib/theme";
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -43,6 +48,7 @@ export default function SettingsPage() {
   const [email, setEmail] = useState("");
   const [businessName, setBusinessName] = useState("");
   const [selectedCurrency, setSelectedCurrency] = useState("USD");
+  const [selectedTheme, setSelectedTheme] = useState<ThemeMode>("light");
   const [savedMessage, setSavedMessage] = useState(false);
   const [subDetails, setSubDetails] = useState<SubscriptionDetails | null>(null);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
@@ -82,14 +88,23 @@ export default function SettingsPage() {
 
       const currentCur = getSavedCurrency();
       setSelectedCurrency(currentCur.code);
+      setSelectedTheme(getSavedTheme());
     };
     loadUser();
+
+    const onThemeChanged = (e: any) => {
+      if (e?.detail) setSelectedTheme(e.detail);
+    };
+    window.addEventListener("stockledger_theme_changed", onThemeChanged);
 
     const handlePlanUpdate = () => {
       getUserSubscriptionDetails().then(setSubDetails);
     };
     window.addEventListener("plan_updated", handlePlanUpdate);
-    return () => window.removeEventListener("plan_updated", handlePlanUpdate);
+    return () => {
+      window.removeEventListener("plan_updated", handlePlanUpdate);
+      window.removeEventListener("stockledger_theme_changed", onThemeChanged);
+    };
   }, []);
 
   const handleSave = (e: React.FormEvent) => {
@@ -99,6 +114,7 @@ export default function SettingsPage() {
       window.dispatchEvent(new Event("profile_updated"));
     }
     saveCurrency(selectedCurrency);
+    saveTheme(selectedTheme);
     setSavedMessage(true);
     setTimeout(() => setSavedMessage(false), 3000);
   };
@@ -400,10 +416,62 @@ Message: ${reportMessage || "(No message entered)"}
           </div>
         </div>
 
+        {/* SECTION 4: Appearance & Night Mode */}
+        <div className="card">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-base font-bold text-gray-900 flex items-center gap-2">
+              <Moon className="w-5 h-5 text-indigo-600" />
+              Theme & Night Mode
+            </h3>
+            <span className="text-xs font-mono text-gray-400">Shortcut: Press &apos;T&apos;</span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {AVAILABLE_THEMES.map((theme) => {
+              const isSelected = selectedTheme === theme.id;
+              return (
+                <button
+                  key={theme.id}
+                  type="button"
+                  onClick={() => {
+                    setSelectedTheme(theme.id);
+                    saveTheme(theme.id);
+                  }}
+                  className={`p-4 rounded-2xl border text-left transition-all ${
+                    isSelected
+                      ? "border-blue-600 bg-blue-50/60 dark:bg-blue-950/40 ring-2 ring-blue-500 shadow-sm"
+                      : "border-gray-200 dark:border-slate-800 hover:bg-gray-50 dark:hover:bg-slate-800/60"
+                  }`}
+                >
+                  <div className="text-2xl mb-1">{theme.icon}</div>
+                  <div className="font-bold text-sm text-gray-900 dark:text-white flex items-center justify-between">
+                    <span>{theme.name}</span>
+                    {isSelected && <CheckCircle className="w-4 h-4 text-blue-600" />}
+                  </div>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{theme.description}</p>
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between">
+            <span className="text-xs text-gray-400">
+              Need keyboard shortcuts? Learn navigation & creation keys.
+            </span>
+            <button
+              type="button"
+              onClick={() => window.dispatchEvent(new CustomEvent("stockledger_open_shortcuts"))}
+              className="text-xs font-bold text-blue-600 hover:text-blue-700 flex items-center gap-1"
+            >
+              <Keyboard className="w-4 h-4" /> Open Shortcuts & Guide (?)
+            </button>
+          </div>
+        </div>
+
         {/* Save Preferences Button */}
         <div className="flex items-center justify-between pt-2">
           <button type="submit" className="btn-primary flex items-center gap-2">
-            <Save className="w-4 h-4" /> Save Profile & Currency
+            <Save className="w-4 h-4" /> Save Preferences
           </button>
         </div>
       </form>

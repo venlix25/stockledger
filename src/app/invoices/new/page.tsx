@@ -9,6 +9,7 @@ import { format } from "date-fns";
 import { getSavedCurrency } from "@/lib/currency";
 import { getUserPlanFromDB, PLAN_LIMITS } from "@/lib/plan";
 import UpgradeModal from "@/components/UpgradeModal";
+import WaitingBanner from "@/components/WaitingBanner";
 
 export default function NewInvoicePage() {
   const router = useRouter();
@@ -246,6 +247,10 @@ export default function NewInvoicePage() {
               className="input-field resize-none"
             />
           </div>
+
+          {loading && (
+            <WaitingBanner actionName="saving wholesale invoice" className="my-2" />
+          )}
 
           <div className="flex gap-3 pt-2">
             <button

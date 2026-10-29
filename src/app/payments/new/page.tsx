@@ -7,6 +7,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { format } from "date-fns";
 import { getSavedCurrency, formatMoney, type CurrencyConfig } from "@/lib/currency";
+import WaitingBanner from "@/components/WaitingBanner";
 
 export default function NewPaymentPage() {
   const router = useRouter();
@@ -203,6 +204,10 @@ export default function NewPaymentPage() {
               className="input-field resize-none"
             />
           </div>
+
+          {loading && (
+            <WaitingBanner actionName="recording payment into ledger" className="my-2" />
+          )}
 
           <div className="flex gap-3 pt-2">
             <button

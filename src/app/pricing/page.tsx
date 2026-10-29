@@ -19,6 +19,7 @@ import {
 import { PAID_PLANS } from "@/lib/nowpayments";
 import { createClient } from "@/lib/supabase/client";
 import { setUserPlan } from "@/lib/plan";
+import WaitingBanner from "@/components/WaitingBanner";
 
 function PricingContent() {
   const router = useRouter();
@@ -301,6 +302,12 @@ function PricingContent() {
                 .
               </p>
             </div>
+          </div>
+        )}
+
+        {loading && (
+          <div className="mb-6 max-w-xl mx-auto">
+            <WaitingBanner actionName="generating secure crypto payment gateway invoice" />
           </div>
         )}
 

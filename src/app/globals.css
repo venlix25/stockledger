@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -8,34 +8,96 @@
   box-sizing: border-box;
 }
 
+:root {
+  --bg-main: #f0f4f8;
+  --bg-card: #ffffff;
+  --border-color: #e5e7eb;
+  --text-main: #111827;
+  --text-muted: #6b7280;
+}
+
+html.dark.theme-dark {
+  --bg-main: #0b0f17;
+  --bg-card: #151c28;
+  --border-color: #243042;
+  --text-main: #f3f4f6;
+  --text-muted: #9ca3af;
+}
+
+html.dark.theme-midnight {
+  --bg-main: #070d19;
+  --bg-card: #0f1b2f;
+  --border-color: #1e3352;
+  --text-main: #f0f6fc;
+  --text-muted: #8b9bb4;
+}
+
 body {
   font-family: 'Inter', system-ui, sans-serif;
-  background-color: #f0f4f8;
+  background-color: var(--bg-main);
+  color: var(--text-main);
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+/* Theme utility backgrounds for layouts */
+html.dark .bg-gray-50 {
+  background-color: var(--bg-main) !important;
+}
+
+html.dark .bg-white {
+  background-color: var(--bg-card) !important;
+}
+
+html.dark .border-gray-100,
+html.dark .border-gray-200 {
+  border-color: var(--border-color) !important;
+}
+
+html.dark .text-gray-900 {
+  color: var(--text-main) !important;
+}
+
+html.dark .text-gray-800 {
+  color: #e5e7eb !important;
+}
+
+html.dark .text-gray-700 {
+  color: #d1d5db !important;
+}
+
+html.dark .text-gray-600,
+html.dark .text-gray-500 {
+  color: var(--text-muted) !important;
 }
 
 @layer components {
   .card {
-    @apply bg-white rounded-2xl shadow-sm border border-gray-100 p-6;
+    background-color: var(--bg-card);
+    border: 1px solid var(--border-color);
+    @apply rounded-2xl shadow-sm p-6 transition-colors duration-200;
   }
   .btn-primary {
-    @apply bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded-xl transition-colors duration-200 flex items-center gap-2;
+    @apply bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded-xl transition-colors duration-200 flex items-center gap-2 shadow-sm;
   }
   .btn-secondary {
-    @apply bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium px-4 py-2 rounded-xl transition-colors duration-200 flex items-center gap-2;
+    @apply bg-gray-100 hover:bg-gray-200 text-gray-700 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-gray-200 font-medium px-4 py-2 rounded-xl transition-colors duration-200 flex items-center gap-2;
   }
   .btn-success {
-    @apply bg-green-500 hover:bg-green-600 text-white font-semibold px-4 py-2 rounded-xl transition-colors duration-200;
+    @apply bg-green-600 hover:bg-green-700 text-white font-semibold px-4 py-2 rounded-xl transition-colors duration-200;
   }
   .input-field {
-    @apply w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all;
+    background-color: var(--bg-card);
+    border: 1px solid var(--border-color);
+    color: var(--text-main);
+    @apply w-full rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all;
   }
   .badge-paid {
-    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700;
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700 dark:bg-green-950/60 dark:text-green-300;
   }
   .badge-pending {
-    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-700;
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-700 dark:bg-orange-950/60 dark:text-orange-300;
   }
   .badge-overdue {
-    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700;
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700 dark:bg-red-950/60 dark:text-red-300;
   }
 }

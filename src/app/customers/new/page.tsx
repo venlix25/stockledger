@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { getUserPlanFromDB, PLAN_LIMITS } from "@/lib/plan";
 import UpgradeModal from "@/components/UpgradeModal";
+import WaitingBanner from "@/components/WaitingBanner";
 import { ArrowLeft, Users } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -134,6 +135,10 @@ export default function NewCustomerPage() {
               className="input-field resize-none"
             />
           </div>
+          {loading && (
+            <WaitingBanner actionName="saving customer to your ledger" className="my-2" />
+          )}
+
           <div className="flex gap-3 pt-2">
             <button
               type="submit"

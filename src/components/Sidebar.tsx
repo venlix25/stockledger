@@ -13,8 +13,13 @@ import {
   BookOpen,
   LogOut,
   Sparkles,
+  Keyboard,
+  Sun,
+  Moon,
+  Sparkle,
 } from "lucide-react";
 import { clsx } from "clsx";
+import { getSavedTheme, saveTheme, ThemeMode } from "@/lib/theme";
 
 const navItems = [
   { href: "/dashboard", label: "Home", icon: LayoutDashboard },
@@ -36,10 +41,17 @@ export default function Sidebar() {
   const [subDetails, setSubDetails] = useState<SubscriptionDetails | null>(null);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(true);
+  const [currentTheme, setCurrentTheme] = useState<ThemeMode>("light");
 
   const plan = subDetails?.plan || "free";
 
   useEffect(() => {
+    setCurrentTheme(getSavedTheme());
+    const onThemeChanged = (e: any) => {
+      if (e?.detail) setCurrentTheme(e.detail);
+    };
+    window.addEventListener("stockledger_theme_changed", onThemeChanged);
+
     getUserSubscriptionDetails().then(setSubDetails);
 
     const handlePlanUpdate = () => {
@@ -74,6 +86,7 @@ export default function Sidebar() {
 
     return () => {
       window.removeEventListener("plan_updated", handlePlanUpdate);
+      window.removeEventListener("stockledger_theme_changed", onThemeChanged);
     };
   }, []);
 
@@ -83,28 +96,55 @@ export default function Sidebar() {
     router.push("/");
   };
 
+  const handleCycleTheme = () => {
+    const nextTheme: ThemeMode =
+      currentTheme === "light" ? "dark" : currentTheme === "dark" ? "midnight" : "light";
+    setCurrentTheme(nextTheme);
+    saveTheme(nextTheme);
+  };
+
+  const handleOpenShortcuts = () => {
+    window.dispatchEvent(new CustomEvent("stockledger_open_shortcuts"));
+  };
+
   return (
-    <aside className="w-64 bg-white border-r border-gray-100 min-h-screen flex flex-col shadow-sm">
+    <aside className="w-64 bg-white dark:bg-slate-900 border-r border-gray-100 dark:border-slate-800 min-h-screen flex flex-col shadow-sm transition-colors duration-200">
       {/* Logo */}
-      <div className="px-6 py-5 border-b border-gray-100">
+      <div className="px-6 py-5 border-b border-gray-100 dark:border-slate-800 flex items-center justify-between">
         <Link href="/dashboard" className="flex items-center gap-3">
           <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center shadow-sm shadow-blue-200">
             <BookOpen className="w-5 h-5 text-white" />
           </div>
           <div>
-            <h1 className="text-base font-bold text-gray-900 leading-tight">StockLedger</h1>
+            <h1 className="text-base font-bold text-gray-900 dark:text-white leading-tight">StockLedger</h1>
             <p className="text-xs text-gray-400">Invoices & Payments</p>
           </div>
         </Link>
       </div>
 
-      {/* User Greeting */}
-      <div className="px-5 py-4 border-b border-gray-50 bg-slate-50/50">
-        <p className="text-sm font-semibold text-gray-800 truncate">
-          {isAuthenticated
-            ? (userName ? `Hello, ${userName} 👋` : "Hello 👋")
-            : "Showcase Visitor 👋"}
-        </p>
+      {/* User Greeting + Quick Theme Button */}
+      <div className="px-4 py-3.5 border-b border-gray-50 dark:border-slate-800/80 bg-slate-50/50 dark:bg-slate-800/40 flex items-center justify-between">
+        <div className="min-w-0 pr-2">
+          <p className="text-xs text-gray-400 dark:text-gray-500 font-medium">Workspace</p>
+          <p className="text-sm font-semibold text-gray-800 dark:text-gray-200 truncate">
+            {isAuthenticated
+              ? (userName ? `Hello, ${userName} 👋` : "Hello 👋")
+              : "Showcase Visitor 👋"}
+          </p>
+        </div>
+        <button
+          onClick={handleCycleTheme}
+          title={`Current Theme: ${currentTheme.toUpperCase()} (Click or press 'T' to switch)`}
+          className="p-1.5 rounded-lg border border-gray-200 dark:border-slate-700 hover:bg-gray-100 dark:hover:bg-slate-800 text-gray-600 dark:text-gray-300 transition-colors flex-shrink-0"
+        >
+          {currentTheme === "light" ? (
+            <Sun className="w-4 h-4 text-amber-500" />
+          ) : currentTheme === "dark" ? (
+            <Moon className="w-4 h-4 text-blue-400" />
+          ) : (
+            <Sparkles className="w-4 h-4 text-indigo-400" />
+          )}
+        </button>
       </div>
 
       {/* Nav */}
@@ -118,33 +158,47 @@ export default function Sidebar() {
               className={clsx(
                 "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150",
                 active
-                  ? "bg-blue-50 text-blue-700 font-semibold"
-                  : "text-gray-500 hover:bg-gray-50 hover:text-gray-800"
+                  ? "bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 font-semibold"
+                  : "text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-slate-800/60 hover:text-gray-800 dark:hover:text-gray-200"
               )}
             >
               <Icon
                 className={clsx(
                   "w-5 h-5",
-                  active ? "text-blue-600" : "text-gray-400"
+                  active ? "text-blue-600 dark:text-blue-400" : "text-gray-400"
                 )}
               />
               {label}
             </Link>
           );
         })}
+
+        {/* Shortcuts & Guide Trigger */}
+        <button
+          onClick={handleOpenShortcuts}
+          className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-slate-800/60 hover:text-gray-800 dark:hover:text-gray-200 transition-all text-left"
+        >
+          <div className="flex items-center gap-3">
+            <Keyboard className="w-5 h-5 text-gray-400" />
+            <span>Shortcuts & Guide</span>
+          </div>
+          <kbd className="px-1.5 py-0.5 rounded bg-gray-100 dark:bg-slate-800 text-[10px] font-mono border border-gray-200 dark:border-slate-700 text-gray-500">
+            ?
+          </kbd>
+        </button>
       </nav>
 
       {/* Plan Status or Showcase Card */}
       {isAuthenticated ? (
-        <div className="mx-3 mb-3 p-3.5 bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-100/60 rounded-2xl">
+        <div className="mx-3 mb-3 p-3.5 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-slate-800 dark:to-slate-800/60 border border-blue-100/60 dark:border-slate-700 rounded-2xl">
           <div className="flex items-center justify-between mb-1">
             <div className="flex items-center gap-1.5">
               {plan === "pro" ? (
-                <ShieldCheck className="w-4 h-4 text-green-600" />
+                <ShieldCheck className="w-4 h-4 text-green-600 dark:text-green-400" />
               ) : (
                 <Zap className="w-4 h-4 text-amber-500 fill-amber-500" />
               )}
-              <span className="text-xs font-bold text-gray-900">
+              <span className="text-xs font-bold text-gray-900 dark:text-gray-100">
                 {plan === "pro" ? "Pro Unlimited" : subDetails?.isExpired ? "Pro Expired" : "Free Plan"}
               </span>
             </div>
@@ -152,10 +206,10 @@ export default function Sidebar() {
               className={clsx(
                 "text-[10px] font-bold px-1.5 py-0.5 rounded-full uppercase",
                 plan === "pro"
-                  ? "bg-green-100 text-green-700"
+                  ? "bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-300"
                   : subDetails?.isExpired
-                  ? "bg-red-100 text-red-700"
-                  : "bg-amber-100 text-amber-800"
+                  ? "bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300"
+                  : "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300"
               )}
             >
               {plan === "pro"
@@ -165,7 +219,7 @@ export default function Sidebar() {
                 : "5 Cust. Max"}
             </span>
           </div>
-          <p className="text-[11px] text-gray-500 mb-2.5">
+          <p className="text-[11px] text-gray-500 dark:text-gray-400 mb-2.5">
             {plan === "pro"
               ? subDetails?.daysRemaining && subDetails.daysRemaining > 0
                 ? `${subDetails.daysRemaining} days left · ${subDetails.tier === "yearly" ? "Yearly" : "Quarterly"}`
@@ -184,12 +238,12 @@ export default function Sidebar() {
           )}
         </div>
       ) : (
-        <div className="mx-3 mb-3 p-3.5 bg-gradient-to-br from-indigo-50 to-blue-50 border border-indigo-100/80 rounded-2xl">
-          <div className="flex items-center gap-1.5 mb-1 text-xs font-bold text-indigo-900">
-            <Sparkles className="w-4 h-4 text-indigo-600" />
+        <div className="mx-3 mb-3 p-3.5 bg-gradient-to-br from-indigo-50 to-blue-50 dark:from-slate-800 dark:to-slate-800/60 border border-indigo-100/80 dark:border-slate-700 rounded-2xl">
+          <div className="flex items-center gap-1.5 mb-1 text-xs font-bold text-indigo-900 dark:text-indigo-200">
+            <Sparkles className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
             <span>Product Showcase</span>
           </div>
-          <p className="text-[11px] text-gray-500 mb-2.5 leading-relaxed">
+          <p className="text-[11px] text-gray-500 dark:text-gray-400 mb-2.5 leading-relaxed">
             Test-driving wholesale ledger features. Create a free account to track your real business.
           </p>
           <Link
@@ -202,11 +256,11 @@ export default function Sidebar() {
       )}
 
       {/* Logout or Sign In */}
-      <div className="px-3 pb-4 pt-2 border-t border-gray-100">
+      <div className="px-3 pb-4 pt-2 border-t border-gray-100 dark:border-slate-800">
         {isAuthenticated ? (
           <button
             onClick={handleLogout}
-            className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium text-red-600 hover:bg-red-50 transition-all"
+            className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 transition-all"
           >
             <LogOut className="w-4 h-4 text-red-500" />
             Sign Out
@@ -214,7 +268,7 @@ export default function Sidebar() {
         ) : (
           <Link
             href="/"
-            className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-xs font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 transition-all"
+            className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-xs font-bold text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/60 hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-all"
           >
             Sign In / Register
           </Link>
