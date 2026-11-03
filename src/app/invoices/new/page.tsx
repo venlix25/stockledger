@@ -57,16 +57,16 @@ export default function NewInvoicePage() {
     setError("");
 
     try {
-      const plan = await getUserPlanFromDB();
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) { router.push("/"); return; }
+
+      const plan = await getUserPlanFromDB(user.id);
       if (plan === "free" && invoiceCount >= PLAN_LIMITS.free.maxInvoices) {
         setShowUpgradeModal(true);
         setLoading(false);
         return;
       }
-
-      const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) { router.push("/"); return; }
 
       const invoiceNumber = `INV-${Date.now().toString().slice(-5)}`;
       const { data: newInv, error: err } = await supabase

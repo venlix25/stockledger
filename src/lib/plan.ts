@@ -32,13 +32,25 @@ export const PLAN_LIMITS = {
  * Detailed subscription checker: queries the authoritative Supabase subscriptions table.
  * Calculates exact days remaining, expiration status, and tier.
  */
-export async function getUserSubscriptionDetails(): Promise<SubscriptionDetails> {
+export async function getUserSubscriptionDetails(
+  userIdOrUser?: string | { id: string }
+): Promise<SubscriptionDetails> {
   try {
     const supabase = createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) {
+    let targetUserId: string | undefined;
+
+    if (typeof userIdOrUser === "string") {
+      targetUserId = userIdOrUser;
+    } else if (userIdOrUser && typeof userIdOrUser === "object" && "id" in userIdOrUser) {
+      targetUserId = userIdOrUser.id;
+    } else {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      targetUserId = user?.id;
+    }
+
+    if (!targetUserId) {
       return {
         plan: "free",
         status: "none",
@@ -50,7 +62,7 @@ export async function getUserSubscriptionDetails(): Promise<SubscriptionDetails>
     const { data } = await supabase
       .from("subscriptions")
       .select("plan, status, starts_at, expires_at")
-      .eq("user_id", user.id)
+      .eq("user_id", targetUserId)
       .order("expires_at", { ascending: false })
       .limit(1)
       .maybeSingle();
@@ -102,8 +114,10 @@ export async function getUserSubscriptionDetails(): Promise<SubscriptionDetails>
  * Authoritative client-side verification: checks Supabase subscriptions table.
  * If expired or non-existent, falls back to "free".
  */
-export async function getUserPlanFromDB(): Promise<UserPlan> {
-  const details = await getUserSubscriptionDetails();
+export async function getUserPlanFromDB(
+  userIdOrUser?: string | { id: string }
+): Promise<UserPlan> {
+  const details = await getUserSubscriptionDetails(userIdOrUser);
   return details.plan;
 }
 
